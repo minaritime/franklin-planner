@@ -167,7 +167,7 @@ export default function LabPage() {
               <Segmented<Priority> value={priority} onChange={setPriority} options={PRIORITIES.map((p) => ({ value: p, label: p }))} />
               <Input
                 value={text}
-                placeholder="새 할일"
+                placeholder="새 할일   예) 3시 상담, 10시반~12시 수업, 14:30 보고"
                 aria-label="새 할일"
                 onChange={(e) => {
                   setText(e.target.value)
