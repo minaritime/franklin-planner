@@ -6,7 +6,6 @@ export type Route =
   | { readonly page: 'calendar'; readonly month?: string }
   | { readonly page: 'goals' }
   | { readonly page: 'settings' }
-  | { readonly page: 'lab' }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/
@@ -14,7 +13,7 @@ const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/
 export function parseHash(hash: string): Route {
   const [page, arg] = hash.replace(/^#\/?/, '').split('/')
   if (page === 'calendar') return arg && MONTH_RE.test(arg) ? { page, month: arg } : { page }
-  if (page === 'goals' || page === 'settings' || page === 'lab') return { page }
+  if (page === 'goals' || page === 'settings') return { page }
   if (page === 'day' && arg && DATE_RE.test(arg)) return { page: 'day', date: arg }
   return { page: 'day', date: todayString() }
 }

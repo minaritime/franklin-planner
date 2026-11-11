@@ -102,6 +102,7 @@ function CellItems({ date, tasks, events }: { date: string; tasks: readonly Task
                 textDecoration: t.status === 'done' || t.status === 'cancelled' ? 'line-through' : undefined,
               }}
             >
+              {t.startTime && <span className="num">{t.startTime} </span>}
               {t.title}
             </span>
           </div>

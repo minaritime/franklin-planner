@@ -8,7 +8,7 @@ import EventModal, { type EventDraft } from '../components/EventModal'
 import TaskActionModal, { type TaskAction } from '../components/TaskActionModal'
 import TaskForm from '../components/TaskForm'
 import TaskList from '../components/TaskList'
-import Timeline from '../components/Timeline'
+import Timeline, { type TimelineBlock } from '../components/Timeline'
 import { bringOverdue } from '../data/actions'
 import { addDays, dDay, formatDDay, overdueTasks, periodTasksOn, tasksForDay } from '../data/logic'
 import { usePlanner } from '../data/store'
@@ -111,7 +111,33 @@ export default function DayPage({ date }: DayPageProps) {
     () => periodTasksOn(data.tasks, date).filter((t) => t.date !== date && t.status === 'todo'),
     [data.tasks, date],
   )
-  const events = useMemo(() => data.events.filter((e) => e.date === date && !e.deleted), [data.events, date])
+  const blocks = useMemo<TimelineBlock[]>(() => {
+    const eventBlocks = data.events
+      .filter((e) => e.date === date && !e.deleted)
+      .map((e) => ({ id: e.id, kind: 'event' as const, start: e.start, end: e.end, title: e.title }))
+    const taskBlocks = dayTasks
+      .filter((t) => t.startTime && t.endTime && t.status !== 'forwarded' && t.status !== 'cancelled')
+      .map((t) => ({
+        id: t.id,
+        kind: 'task' as const,
+        start: t.startTime!,
+        end: t.endTime!,
+        title: t.title,
+        priority: t.priority,
+        finished: t.status !== 'todo',
+      }))
+    return [...eventBlocks, ...taskBlocks]
+  }, [data.events, dayTasks, date])
+
+  const openBlock = (block: TimelineBlock): void => {
+    if (block.kind === 'task') {
+      const task = dayTasks.find((t) => t.id === block.id)
+      if (task) setForm({ open: true, task })
+      return
+    }
+    const event = data.events.find((e) => e.id === block.id)
+    if (event) setEventDraft({ event })
+  }
   const note = data.notes.find((n) => n.date === date)?.text ?? ''
   const doneCount = dayTasks.filter((t) => t.status === 'done').length
 
@@ -148,7 +174,12 @@ export default function DayPage({ date }: DayPageProps) {
               title="일정"
               extra={<Button type="text" size="small" icon={<PlusOutlined />} aria-label="일정 추가" onClick={() => setEventDraft({ date, hour: 9 })} />}
             >
-              <Timeline date={date} isToday={date === today} events={events} onOpen={setEventDraft} />
+              <Timeline
+                isToday={date === today}
+                blocks={blocks}
+                onOpenBlock={openBlock}
+                onOpenEmpty={(hour) => setEventDraft({ date, hour })}
+              />
             </Card>
             <Card title="메모">
               <DayMemo key={date} date={date} initial={note} />

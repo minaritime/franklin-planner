@@ -1,4 +1,7 @@
-import type { PlanEvent } from './types'
+interface Timed {
+  readonly start: string
+  readonly end: string
+}
 
 export const DEFAULT_START_HOUR = 8
 export const DEFAULT_END_HOUR = 22
@@ -14,7 +17,7 @@ export interface HourRange {
 }
 
 /** 기본 8~22시, 그 밖의 일정이 있으면 그만큼 넓힌다 */
-export function hourRange(events: readonly PlanEvent[]): HourRange {
+export function hourRange(events: readonly Timed[]): HourRange {
   return events.reduce<HourRange>(
     (r, e) => ({
       start: Math.min(r.start, Math.floor(toMinutes(e.start) / 60)),
@@ -24,17 +27,17 @@ export function hourRange(events: readonly PlanEvent[]): HourRange {
   )
 }
 
-export interface PlacedEvent {
-  readonly event: PlanEvent
+export interface PlacedEvent<T extends Timed> {
+  readonly event: T
   readonly column: number
   readonly columns: number
 }
 
 /** 겹치는 일정끼리 묶어서 나란히 놓을 칸을 정한다 */
-export function layoutEvents(events: readonly PlanEvent[]): PlacedEvent[] {
+export function layoutEvents<T extends Timed>(events: readonly T[]): PlacedEvent<T>[] {
   const sorted = [...events].sort((a, b) => toMinutes(a.start) - toMinutes(b.start) || toMinutes(b.end) - toMinutes(a.end))
-  const placed: PlacedEvent[] = []
-  let cluster: { event: PlanEvent; column: number }[] = []
+  const placed: PlacedEvent<T>[] = []
+  let cluster: { event: T; column: number }[] = []
   let clusterEnd = -1
   let columnEnds: number[] = []
 

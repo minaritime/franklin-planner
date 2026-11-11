@@ -1,5 +1,6 @@
 import {
   bringToDay,
+  cyclePriority,
   delegateTask,
   forwardTask,
   newId,
@@ -17,6 +18,8 @@ export interface TaskInput {
   readonly date: string
   readonly dueDate?: string
   readonly goalId?: string
+  readonly startTime?: string
+  readonly endTime?: string
 }
 
 export function addTask(input: TaskInput): void {
@@ -61,6 +64,10 @@ export function removeTask(id: string): void {
 
 export function changeStatus(id: string, status: TaskStatus): void {
   setData((d) => ({ ...d, tasks: setTaskStatus(d.tasks, id, status, Date.now()) }))
+}
+
+export function rotatePriority(id: string): void {
+  setData((d) => ({ ...d, tasks: cyclePriority(d.tasks, id, Date.now()) }))
 }
 
 export function delegate(id: string, who: string): void {

@@ -15,6 +15,9 @@ export interface Task {
   /** 기간 시작. 마감일이 있을 때만 의미가 있고, 미뤄도 바뀌지 않는다 */
   readonly startDate?: string
   readonly dueDate?: string
+  /** 그날 하는 시간 (선택). 있으면 하루 시간표에도 블록으로 나온다 */
+  readonly startTime?: string
+  readonly endTime?: string
   readonly goalId?: string
   readonly delegatedTo?: string
   /** 미룬 날짜 (status 가 forwarded 일 때) */

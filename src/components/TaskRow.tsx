@@ -2,7 +2,7 @@ import { HolderOutlined, MoreOutlined } from '@ant-design/icons'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Button, Dropdown, Flex, Tag, theme, Typography, type MenuProps } from 'antd'
-import { changeStatus, removeTask } from '../data/actions'
+import { changeStatus, removeTask, rotatePriority } from '../data/actions'
 import { dDay, formatDDay } from '../data/logic'
 import type { Goal, Task } from '../data/types'
 import { PRIORITY_COLOR_TOKEN } from '../theme'
@@ -87,14 +87,28 @@ export default function TaskRow({ task, goal, today, onEdit, onAction }: TaskRow
       <span style={{ paddingTop: 1 }}>
         <StatusMark task={task} onToggle={toggle} />
       </span>
-      <Typography.Text
+      <button
+        type="button"
         className="num"
-        strong
-        style={{ width: 24, flex: 'none', color: token[PRIORITY_COLOR_TOKEN[task.priority]] }}
+        aria-label={`우선순위 ${task.priority} 바꾸기`}
+        onClick={() => rotatePriority(task.id)}
+        style={{
+          width: 28,
+          flex: 'none',
+          padding: 0,
+          border: 0,
+          background: 'none',
+          textAlign: 'left',
+          font: 'inherit',
+          lineHeight: '22px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          color: token[PRIORITY_COLOR_TOKEN[task.priority]],
+        }}
       >
         {task.priority}
         {task.order}
-      </Typography.Text>
+      </button>
       <Flex vertical style={{ flex: 1, minWidth: 0 }} gap={2}>
         <Typography.Text
           delete={struck}
@@ -102,6 +116,11 @@ export default function TaskRow({ task, goal, today, onEdit, onAction }: TaskRow
           style={{ wordBreak: 'break-all', cursor: 'pointer' }}
           onClick={() => onEdit(task)}
         >
+          {task.startTime && (
+            <span className="num" style={{ color: finished ? undefined : token.colorPrimary, marginInlineEnd: 8 }}>
+              {task.startTime}
+            </span>
+          )}
           {task.title}
         </Typography.Text>
         <Flex gap={8} wrap align="center">

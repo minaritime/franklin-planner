@@ -54,6 +54,16 @@ export function setTaskStatus(tasks: readonly Task[], id: string, status: TaskSt
   return updateTask(tasks, id, { status }, now)
 }
 
+const NEXT_PRIORITY: Record<Priority, Priority> = { A: 'B', B: 'C', C: 'A' }
+
+/** A → B → C → A 로 돌리고, 새 묶음의 맨 뒤 번호를 준다 */
+export function cyclePriority(tasks: readonly Task[], id: string, now: number): Task[] {
+  const task = tasks.find((t) => t.id === id)
+  if (!task) return [...tasks]
+  const priority = NEXT_PRIORITY[task.priority]
+  return updateTask(tasks, id, { priority, order: nextOrder(tasks, task.date, priority) }, now)
+}
+
 export function delegateTask(tasks: readonly Task[], id: string, who: string, now: number): Task[] {
   return updateTask(tasks, id, { status: 'delegated', delegatedTo: who }, now)
 }

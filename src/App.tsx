@@ -9,7 +9,6 @@ import { navigate, useHashRoute, type Route } from './hooks/useHashRoute'
 import CalendarPage from './pages/CalendarPage'
 import DayPage from './pages/DayPage'
 import GoalsPage from './pages/GoalsPage'
-import LabPage from './pages/LabPage'
 import SettingsPage from './pages/SettingsPage'
 
 type PageKey = Route['page']
@@ -41,8 +40,6 @@ function renderPage(route: Route) {
       return <GoalsPage />
     case 'settings':
       return <SettingsPage />
-    case 'lab':
-      return <LabPage />
   }
 }
 

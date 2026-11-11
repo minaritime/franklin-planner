@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   addDays,
   bringToDay,
+  cyclePriority,
   dDay,
   delegateTask,
   forwardTask,
@@ -112,6 +113,17 @@ describe('setTaskStatus / delegateTask', () => {
   it('records who it was delegated to', () => {
     const result = delegateTask([task({ id: 'x' })], 'x', '김선생', 9)
     expect(result[0]).toMatchObject({ status: 'delegated', delegatedTo: '김선생' })
+  })
+})
+
+describe('cyclePriority', () => {
+  it('goes A → B → C → A and moves to the end of the new group', () => {
+    const tasks = [task({ id: 'x', priority: 'A', order: 1 }), task({ id: 'b1', priority: 'B', order: 1 }), task({ id: 'b2', priority: 'B', order: 2 })]
+    const once = cyclePriority(tasks, 'x', 5)
+    expect(once.find((t) => t.id === 'x')).toMatchObject({ priority: 'B', order: 3, updatedAt: 5 })
+    const twice = cyclePriority(once, 'x', 6)
+    expect(twice.find((t) => t.id === 'x')).toMatchObject({ priority: 'C', order: 1 })
+    expect(cyclePriority(twice, 'x', 7).find((t) => t.id === 'x')?.priority).toBe('A')
   })
 })
 

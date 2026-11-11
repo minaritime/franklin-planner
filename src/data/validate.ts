@@ -15,6 +15,7 @@ const isDate = (v: unknown): v is string => isStr(v) && DATE_RE.test(v)
 const optDate = (v: unknown): boolean => v === undefined || isDate(v)
 const optStr = (v: unknown): boolean => v === undefined || isStr(v)
 const optBool = (v: unknown): boolean => v === undefined || typeof v === 'boolean'
+const optTime = (v: unknown): boolean => v === undefined || (isStr(v) && TIME_RE.test(v))
 
 export function isTask(v: unknown): v is Task {
   return (
@@ -28,6 +29,8 @@ export function isTask(v: unknown): v is Task {
     isDate(v.date) &&
     optDate(v.startDate) &&
     optDate(v.dueDate) &&
+    optTime(v.startTime) &&
+    optTime(v.endTime) &&
     optStr(v.goalId) &&
     optStr(v.delegatedTo) &&
     optDate(v.forwardedTo) &&

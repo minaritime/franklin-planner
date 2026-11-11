@@ -22,6 +22,7 @@ describe('parsePlannerData', () => {
       goals: [{ id: 'g', title: '목표', kind: 'goal', description: '', updatedAt: 1 }, { id: 'g2', kind: 'goal' }],
     })
     expect(parsed?.tasks.map((t) => t.id)).toEqual(['t'])
+    expect(parsePlannerData({ version: 1, tasks: [{ ...goodTask, startTime: '15:00', endTime: '16:00' }, { ...goodTask, id: 'bt', startTime: '3시' }], events: [], notes: [], goals: [] })?.tasks.map((t) => t.id)).toEqual(['t'])
     expect(parsed?.events.map((e) => e.id)).toEqual(['e'])
     expect(parsed?.notes).toHaveLength(1)
     expect(parsed?.goals.map((g) => g.id)).toEqual(['g'])

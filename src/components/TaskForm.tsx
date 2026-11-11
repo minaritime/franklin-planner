@@ -1,5 +1,5 @@
-import { DatePicker, Form, Input, Modal, Segmented, Select } from 'antd'
-import type dayjs from 'dayjs'
+import { DatePicker, Form, Input, Modal, Segmented, Select, TimePicker } from 'antd'
+import dayjs from 'dayjs'
 import { useEffect } from 'react'
 import { addTask, editTask, type TaskInput } from '../data/actions'
 import { liveGoals } from '../data/logic'
@@ -20,9 +20,12 @@ interface FormValues {
   priority: Priority
   date: dayjs.Dayjs
   dueDate?: dayjs.Dayjs | null
+  time?: [dayjs.Dayjs, dayjs.Dayjs] | null
   goalId?: string
   note?: string
 }
+
+const TIME_FMT = 'HH:mm'
 
 export const PRIORITY_OPTIONS = [
   { value: 'A', label: 'A 반드시' },
@@ -43,6 +46,7 @@ export default function TaskForm({ open, task, defaultDate, onClose }: TaskFormP
       priority: task?.priority ?? 'B',
       date: toDayjs(task?.date ?? defaultDate),
       dueDate: toDayjs(task?.dueDate) ?? null,
+      time: task?.startTime && task.endTime ? [dayjs(task.startTime, TIME_FMT), dayjs(task.endTime, TIME_FMT)] : null,
       goalId: task?.goalId,
       note: task?.note ?? '',
     })
@@ -56,6 +60,8 @@ export default function TaskForm({ open, task, defaultDate, onClose }: TaskFormP
       priority: v.priority,
       date: fromDayjs(v.date) ?? defaultDate,
       dueDate: fromDayjs(v.dueDate),
+      startTime: v.time ? v.time[0].format(TIME_FMT) : undefined,
+      endTime: v.time ? v.time[1].format(TIME_FMT) : undefined,
       goalId: v.goalId,
     }
     if (task) editTask(task.id, input)
@@ -112,6 +118,24 @@ export default function TaskForm({ open, task, defaultDate, onClose }: TaskFormP
             />
           </Form.Item>
         </div>
+        <Form.Item
+          name="time"
+          label="시간"
+          rules={[
+            {
+              validator: (_, v: FormValues['time']) =>
+                !v || v[1].isAfter(v[0]) ? Promise.resolve() : Promise.reject(new Error('끝나는 시간이 더 늦어야 합니다')),
+            },
+          ]}
+        >
+          <TimePicker.RangePicker
+            format={TIME_FMT}
+            minuteStep={10}
+            needConfirm={false}
+            placeholder={['시작', '끝']}
+            style={{ width: '100%' }}
+          />
+        </Form.Item>
         <Form.Item name="goalId" label="목표">
           <Select
             allowClear

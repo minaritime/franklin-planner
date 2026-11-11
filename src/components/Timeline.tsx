@@ -1,14 +1,25 @@
 import { theme, Typography } from 'antd'
-import { useEffect, useState, type MouseEvent } from 'react'
+import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
 import { hourRange, layoutEvents, toMinutes } from '../data/timeline'
-import type { PlanEvent } from '../data/types'
-import type { EventDraft } from './EventModal'
+import type { Priority } from '../data/types'
+import { PRIORITY_COLOR_TOKEN } from '../theme'
+
+/** 시간표 한 칸: 일정이거나, 시간이 붙은 할일 */
+export interface TimelineBlock {
+  readonly id: string
+  readonly kind: 'event' | 'task'
+  readonly start: string
+  readonly end: string
+  readonly title: string
+  readonly priority?: Priority
+  readonly finished?: boolean
+}
 
 interface TimelineProps {
-  readonly date: string
   readonly isToday: boolean
-  readonly events: readonly PlanEvent[]
-  readonly onOpen: (draft: EventDraft) => void
+  readonly blocks: readonly TimelineBlock[]
+  readonly onOpenBlock: (block: TimelineBlock) => void
+  readonly onOpenEmpty: (hour: number) => void
 }
 
 const HOUR_HEIGHT = 48
@@ -24,16 +35,29 @@ function useNowMinutes(enabled: boolean): number {
   return now.getHours() * 60 + now.getMinutes()
 }
 
-export default function Timeline({ date, isToday, events, onOpen }: TimelineProps) {
+export default function Timeline({ isToday, blocks, onOpenBlock, onOpenEmpty }: TimelineProps) {
   const { token } = theme.useToken()
-  const range = hourRange(events)
+  const range = hourRange(blocks)
   const hours = Array.from({ length: range.end - range.start }, (_, i) => range.start + i)
   const nowMinutes = useNowMinutes(isToday)
   const top = (minutes: number): number => ((minutes - range.start * 60) / 60) * HOUR_HEIGHT
 
   const onGridClick = (e: MouseEvent<HTMLDivElement>): void => {
     const y = e.clientY - e.currentTarget.getBoundingClientRect().top
-    onOpen({ date, hour: Math.min(range.end - 1, range.start + Math.floor(y / HOUR_HEIGHT)) })
+    onOpenEmpty(Math.min(range.end - 1, range.start + Math.floor(y / HOUR_HEIGHT)))
+  }
+
+  /** 일정은 파란 바탕, 할일은 우선순위 색 테두리의 흰 바탕으로 구분한다 */
+  const blockStyle = (block: TimelineBlock): CSSProperties => {
+    if (block.kind === 'event') {
+      return { background: token.colorPrimaryBg, borderInlineStart: `2px solid ${token.colorPrimary}` }
+    }
+    const color = block.finished ? token.colorBorder : token[PRIORITY_COLOR_TOKEN[block.priority ?? 'B']]
+    return {
+      background: token.colorBgContainer,
+      border: `1px solid ${token.colorBorderSecondary}`,
+      borderInlineStart: `2px solid ${color}`,
+    }
   }
 
   return (
@@ -58,15 +82,15 @@ export default function Timeline({ date, isToday, events, onOpen }: TimelineProp
         style={{ position: 'absolute', inset: `0 0 0 ${LABEL_WIDTH}px`, cursor: 'copy' }}
       />
 
-      {layoutEvents(events).map(({ event, column, columns }) => {
-        const start = toMinutes(event.start)
-        const end = toMinutes(event.end)
+      {layoutEvents(blocks).map(({ event: block, column, columns }) => {
+        const start = toMinutes(block.start)
+        const end = toMinutes(block.end)
         const height = Math.max(20, top(end) - top(start) - 2)
         return (
           <button
-            key={event.id}
+            key={`${block.kind}-${block.id}`}
             type="button"
-            onClick={() => onOpen({ event })}
+            onClick={() => onOpenBlock(block)}
             style={{
               position: 'absolute',
               top: top(start) + 1,
@@ -78,21 +102,30 @@ export default function Timeline({ date, isToday, events, onOpen }: TimelineProp
               flexDirection: 'column',
               justifyContent: 'flex-start',
               border: 0,
-              borderInlineStart: `2px solid ${token.colorPrimary}`,
               borderRadius: token.borderRadiusSM,
-              background: token.colorPrimaryBg,
-              color: token.colorText,
+              color: block.finished ? token.colorTextTertiary : token.colorText,
               textAlign: 'left',
               overflow: 'hidden',
               cursor: 'pointer',
               fontSize: 12,
               lineHeight: '18px',
+              ...blockStyle(block),
             }}
           >
-            <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</div>
+            <div
+              style={{
+                fontWeight: 500,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                textDecoration: block.finished ? 'line-through' : undefined,
+              }}
+            >
+              {block.title}
+            </div>
             {height >= 40 && (
               <div className="num" style={{ color: token.colorTextSecondary }}>
-                {event.start}~{event.end}
+                {block.start}~{block.end}
               </div>
             )}
           </button>
