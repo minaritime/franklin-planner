@@ -1,4 +1,4 @@
-import { CalendarOutlined, LeftOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons'
+import { LeftOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Col, DatePicker, Flex, Grid, Row, Typography } from 'antd'
 import dayjs from 'dayjs'
 import { useMemo, useState } from 'react'
@@ -54,8 +54,8 @@ function DayHeader({ date, today, onAdd }: { date: string; today: string; onAdd:
         {isWide && (
           <DatePicker value={dayjs(date)} allowClear={false} onChange={(v) => goTo(fromDayjs(v) ?? date)} style={{ width: 132 }} />
         )}
-        <Button icon={<CalendarOutlined />} onClick={onAdd}>
-          기간 할일
+        <Button type="primary" icon={<PlusOutlined />} onClick={onAdd}>
+          장기 할일 추가
         </Button>
       </Flex>
     </Flex>
@@ -85,7 +85,7 @@ function OverdueNotice({ tasks, today }: { tasks: readonly Task[]; today: string
 function PeriodList({ tasks, today }: { tasks: readonly Task[]; today: string }) {
   if (tasks.length === 0) return null
   return (
-    <Card title="기간 진행 중" style={{ marginTop: 16 }}>
+    <Card title="진행 중인 장기 할일" style={{ marginTop: 16 }}>
       {tasks.map((t) => (
         <Flex key={t.id} justify="space-between" gap={8} style={{ padding: '4px 0', cursor: 'pointer' }} onClick={() => goTo(t.date)}>
           <Typography.Text ellipsis>{t.title}</Typography.Text>

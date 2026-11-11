@@ -1,4 +1,4 @@
-import { Flex, Input, Segmented, type InputRef } from 'antd'
+import { Button, Flex, Input, Segmented, type InputRef } from 'antd'
 import { useRef, useState } from 'react'
 import { addTask } from '../data/actions'
 import type { Priority } from '../data/types'
@@ -42,6 +42,9 @@ export default function QuickAdd({ date }: QuickAddProps) {
           submit()
         }}
       />
+      <Button disabled={!title.trim()} onClick={submit}>
+        추가
+      </Button>
     </Flex>
   )
 }

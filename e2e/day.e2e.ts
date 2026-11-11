@@ -12,6 +12,15 @@ test('빠른 추가로 할일을 넣고 완료 표시한 뒤 다른 날로 미�
   await page.getByRole('textbox', { name: '새 할일' }).press('Enter')
   await expect(page.getByRole('textbox', { name: '새 할일' })).toHaveValue('')
 
+  await page.getByRole('textbox', { name: '새 할일' }).fill('버튼으로 넣기')
+  await page.getByRole('button', { name: '추가', exact: true }).click()
+  await expect(page.getByText('버튼으로 넣기')).toBeVisible()
+  await page.getByText('버튼으로 넣기').click()
+  await page.getByRole('dialog').getByRole('button', { name: '취소' }).click()
+  await page.getByRole('button', { name: '더보기' }).nth(1).click()
+  await page.getByText('삭제').click()
+  await expect(page.getByText('버튼으로 넣기')).toBeHidden()
+
   const row = page.getByText('보고서 쓰기')
   await expect(row).toBeVisible()
   await expect(page.getByText('A1', { exact: true })).toBeVisible()
@@ -46,8 +55,8 @@ test('일정을 추가하고 메모가 새로고침 뒤에도 남는다', async 
   await expect(page.getByRole('button', { name: /수업/ })).toBeVisible()
 })
 
-test('기간 할일을 만들면 달력에 막대로 보이고 눌러서 고칠 수 있다', async ({ page }) => {
-  await page.getByRole('button', { name: '기간 할일' }).click()
+test('장기 할일을 만들면 달력에 막대로 보이고 눌러서 고칠 수 있다', async ({ page }) => {
+  await page.getByRole('button', { name: '장기 할일 추가' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('할일').fill('발표 준비')
   await dialog.getByRole('button', { name: '저장' }).click()

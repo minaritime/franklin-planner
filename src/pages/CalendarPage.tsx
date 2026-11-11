@@ -101,7 +101,7 @@ export default function CalendarPage({ month }: CalendarPageProps) {
           </Button>
           <Button icon={<RightOutlined />} aria-label="다음달" onClick={() => goMonth(shiftMonth(current, 1))} />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setForm({ open: true, task: null })}>
-            기간 할일 추가
+            장기 할일 추가
           </Button>
         </Flex>
       </Flex>

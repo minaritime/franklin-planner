@@ -66,7 +66,7 @@ export default function TaskForm({ open, task, defaultDate, onClose }: TaskFormP
   return (
     <Modal
       open={open}
-      title={task ? '할일 수정' : '기간 할일 추가'}
+      title={task ? '할일 수정' : '장기 할일 추가'}
       okText="저장"
       cancelText="취소"
       onOk={submit}
