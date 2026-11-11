@@ -19,6 +19,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "antd": "^6.7.0",
     "dayjs": "^1.11.23",
+    "firebase": "^13.2.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

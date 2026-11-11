@@ -3,6 +3,8 @@ import { Alert, Grid, Layout, Menu, theme, Typography } from 'antd'
 import type { ReactNode } from 'react'
 import { todayString } from './data/logic'
 import { useSaveFailed } from './data/store'
+import SyncBadge from './components/SyncBadge'
+import { useSyncState } from './sync/status'
 import { navigate, useHashRoute, type Route } from './hooks/useHashRoute'
 import CalendarPage from './pages/CalendarPage'
 import DayPage from './pages/DayPage'
@@ -89,6 +91,7 @@ export default function App() {
   const { token } = theme.useToken()
   const isWide = screens.md ?? true
   const saveFailed = useSaveFailed()
+  const sync = useSyncState()
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -109,6 +112,9 @@ export default function App() {
             items={NAV.map((n) => ({ key: n.key, label: n.label, icon: n.icon }))}
             onClick={({ key }) => go(key as PageKey)}
           />
+          <div style={{ position: 'absolute', bottom: 16, left: 24, right: 16 }}>
+            <SyncBadge sync={sync} />
+          </div>
         </Layout.Sider>
       )}
       <Layout.Content style={{ padding: isWide ? 24 : '16px 16px 88px', maxWidth: 1280, width: '100%' }}>

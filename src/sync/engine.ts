@@ -63,8 +63,8 @@ export interface SyncEngineOptions {
 export interface SyncEngine {
   start(): void
   stop(): void
-  /** 기다리지 않고 지금 바로 올린다 (로그아웃 직전 등) */
-  flush(): Promise<void>
+  /** 기다리지 않고 지금 바로 올린다. 남김없이 올라갔으면 true */
+  flush(): Promise<boolean>
 }
 
 const RETRY_MS = 10_000
@@ -159,7 +159,11 @@ export function createSyncEngine({ store, adapter, delayMs, onStatus }: SyncEngi
     },
     async flush() {
       clearTimeout(timer)
+      if (stopped || !ready()) return false
       await runPush()
+      // 올리는 사이에 바뀐 것이 있으면 한 번 더
+      if (itemsToPush(store.get(), known).length > 0) await runPush()
+      return itemsToPush(store.get(), known).length === 0
     },
   }
 }

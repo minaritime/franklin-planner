@@ -1,5 +1,6 @@
 import { DownloadOutlined, UploadOutlined } from '@ant-design/icons'
 import { App, Button, Card, Flex, Typography, Upload } from 'antd'
+import SyncCard from '../components/SyncCard'
 import { mergeData, todayString } from '../data/logic'
 import { getData, parsePlannerData, setData } from '../data/store'
 
@@ -36,9 +37,7 @@ export default function SettingsPage() {
         설정
       </Typography.Title>
       <Flex vertical gap={16} style={{ maxWidth: 640 }}>
-        <Card title="동기화">
-          <Typography.Text type="secondary">준비 중</Typography.Text>
-        </Card>
+        <SyncCard />
         <Card title="백업 파일">
           <Flex gap={8} wrap>
             <Button icon={<DownloadOutlined />} onClick={exportJson}>

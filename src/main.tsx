@@ -4,8 +4,10 @@ import dayjs from 'dayjs'
 import 'dayjs/locale/ko'
 import './global.css'
 import Root from './Root.tsx'
+import { startSync } from './sync'
 
 dayjs.locale('ko')
+void startSync()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

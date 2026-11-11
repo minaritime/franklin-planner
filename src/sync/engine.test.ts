@@ -164,4 +164,19 @@ describe('createSyncEngine', () => {
     await settle()
     expect(store.get().tasks[0].title).toBe('a')
   })
+  it('flush() says whether everything reached the server', async () => {
+    const store = memoryStore({ ...EMPTY_DATA, tasks: [task('a', 1)] })
+    const server = fakeServer({ tasks: [task('a', 1)] })
+    const engine = createSyncEngine({ store, adapter: server.adapter, delayMs: 100, onStatus: () => {} })
+    engine.start()
+    await settle()
+
+    server.setFail(true)
+    store.set((d) => ({ ...d, tasks: [task('a', 2, 'unsaved')] }))
+    expect(await engine.flush()).toBe(false)
+
+    server.setFail(false)
+    expect(await engine.flush()).toBe(true)
+    expect((server.docs.get('tasks')!.get('a') as Task).title).toBe('unsaved')
+  })
 })
