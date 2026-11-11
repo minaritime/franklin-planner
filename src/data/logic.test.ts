@@ -127,8 +127,10 @@ describe('overdueTasks', () => {
       task({ id: 'olddone', date: '2026-11-09', status: 'done' }),
       task({ id: 'today' }),
       task({ id: 'olddel', date: '2026-11-09', deleted: true }),
+      task({ id: 'inperiod', date: '2026-11-09', dueDate: '2026-11-20' }),
+      task({ id: 'pastdue', date: '2026-11-08', dueDate: '2026-11-10' }),
     ]
-    expect(overdueTasks(tasks, '2026-11-11').map((t) => t.id)).toEqual(['old'])
+    expect(overdueTasks(tasks, '2026-11-11').map((t) => t.id)).toEqual(['pastdue', 'old'])
   })
 })
 

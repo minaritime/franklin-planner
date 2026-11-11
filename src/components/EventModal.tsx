@@ -50,7 +50,13 @@ export default function EventModal({ draft, onClose }: EventModalProps) {
     <Modal open={draft !== null} title={existing ? '일정 수정' : '일정 추가'} footer={null} onCancel={onClose} destroyOnHidden width={400}>
       <Form form={form} layout="vertical" requiredMark={false} style={{ marginTop: 16 }}>
         <Form.Item name="title" label="일정" rules={[{ required: true, whitespace: true, message: '일정을 적어주세요' }]}>
-          <Input autoFocus maxLength={100} onPressEnter={submit} />
+          <Input
+            autoFocus
+            maxLength={100}
+            onPressEnter={(e) => {
+              if (!e.nativeEvent.isComposing) void submit()
+            }}
+          />
         </Form.Item>
         <Form.Item
           name="range"

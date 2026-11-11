@@ -34,6 +34,7 @@ export default function TaskForm({ open, task, defaultDate, onClose }: TaskFormP
   const [form] = Form.useForm<FormValues>()
   const { goals } = usePlanner()
   const date = Form.useWatch('date', form)
+  const dueDate = Form.useWatch('dueDate', form)
 
   useEffect(() => {
     if (!open) return
@@ -65,7 +66,7 @@ export default function TaskForm({ open, task, defaultDate, onClose }: TaskFormP
   return (
     <Modal
       open={open}
-      title={task ? '할일 수정' : '할일 추가'}
+      title={task ? '할일 수정' : '기간 할일 추가'}
       okText="저장"
       cancelText="취소"
       onOk={submit}
@@ -75,13 +76,19 @@ export default function TaskForm({ open, task, defaultDate, onClose }: TaskFormP
     >
       <Form form={form} layout="vertical" requiredMark={false} style={{ marginTop: 16 }}>
         <Form.Item name="title" label="할일" rules={[{ required: true, whitespace: true, message: '할일을 적어주세요' }]}>
-          <Input autoFocus maxLength={200} onPressEnter={submit} />
+          <Input
+            autoFocus
+            maxLength={200}
+            onPressEnter={(e) => {
+              if (!e.nativeEvent.isComposing) void submit()
+            }}
+          />
         </Form.Item>
         <Form.Item name="priority" label="우선순위">
           <Segmented block options={PRIORITY_OPTIONS} />
         </Form.Item>
         <div style={{ display: 'flex', gap: 16 }}>
-          <Form.Item name="date" label="하는 날" style={{ flex: 1 }} rules={[{ required: true, message: '날짜를 골라주세요' }]}>
+          <Form.Item name="date" label={dueDate ? '시작일' : '날짜'} style={{ flex: 1 }} rules={[{ required: true, message: '날짜를 골라주세요' }]}>
             <DatePicker allowClear={false} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
@@ -89,6 +96,7 @@ export default function TaskForm({ open, task, defaultDate, onClose }: TaskFormP
             label="마감일"
             style={{ flex: 1 }}
             rules={[
+              { required: task === null, message: '마감일을 골라주세요' },
               {
                 validator: (_, value: dayjs.Dayjs | null) =>
                   !value || !date || !value.isBefore(date, 'day')

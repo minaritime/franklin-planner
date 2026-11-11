@@ -1,8 +1,9 @@
-import { LeftOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons'
+import { CalendarOutlined, LeftOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Col, DatePicker, Flex, Grid, Row, Typography } from 'antd'
 import dayjs from 'dayjs'
 import { useMemo, useState } from 'react'
 import DayMemo from '../components/DayMemo'
+import QuickAdd from '../components/QuickAdd'
 import EventModal, { type EventDraft } from '../components/EventModal'
 import TaskActionModal, { type TaskAction } from '../components/TaskActionModal'
 import TaskForm from '../components/TaskForm'
@@ -52,8 +53,8 @@ function DayHeader({ date, today, onAdd }: { date: string; today: string; onAdd:
         {isWide && (
           <DatePicker value={dayjs(date)} allowClear={false} onChange={(v) => goTo(fromDayjs(v) ?? date)} style={{ width: 132 }} />
         )}
-        <Button type="primary" icon={<PlusOutlined />} onClick={onAdd}>
-          {isWide ? '할일 추가' : '추가'}
+        <Button icon={<CalendarOutlined />} onClick={onAdd}>
+          기간 할일
         </Button>
       </Flex>
     </Flex>
@@ -129,6 +130,7 @@ export default function DayPage({ date }: DayPageProps) {
               )
             }
           >
+            <QuickAdd date={date} />
             <TaskList
               tasks={dayTasks}
               goals={data.goals}

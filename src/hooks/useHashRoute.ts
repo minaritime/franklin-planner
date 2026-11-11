@@ -3,21 +3,25 @@ import { todayString } from '../data/logic'
 
 export type Route =
   | { readonly page: 'day'; readonly date: string }
-  | { readonly page: 'calendar' }
+  | { readonly page: 'calendar'; readonly month?: string }
   | { readonly page: 'goals' }
   | { readonly page: 'settings' }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/
 
 export function parseHash(hash: string): Route {
   const [page, arg] = hash.replace(/^#\/?/, '').split('/')
-  if (page === 'calendar' || page === 'goals' || page === 'settings') return { page }
+  if (page === 'calendar') return arg && MONTH_RE.test(arg) ? { page, month: arg } : { page }
+  if (page === 'goals' || page === 'settings') return { page }
   if (page === 'day' && arg && DATE_RE.test(arg)) return { page: 'day', date: arg }
   return { page: 'day', date: todayString() }
 }
 
 export function routeToHash(route: Route): string {
-  return route.page === 'day' ? `#/day/${route.date}` : `#/${route.page}`
+  if (route.page === 'day') return `#/day/${route.date}`
+  if (route.page === 'calendar' && route.month) return `#/calendar/${route.month}`
+  return `#/${route.page}`
 }
 
 export function navigate(route: Route): void {

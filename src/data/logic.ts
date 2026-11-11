@@ -102,7 +102,9 @@ export function reorderGroup(tasks: readonly Task[], orderedIds: readonly string
 }
 
 export function overdueTasks(tasks: readonly Task[], today: string): Task[] {
-  return tasks.filter((t) => isLive(t) && t.status === 'todo' && t.date < today).sort((a, b) =>
+  const isOverdue = (t: Task): boolean =>
+    isLive(t) && t.status === 'todo' && t.date < today && (t.dueDate === undefined || t.dueDate < today)
+  return tasks.filter(isOverdue).sort((a, b) =>
     a.date === b.date ? byPriorityThenOrder(a, b) : a.date.localeCompare(b.date),
   )
 }

@@ -32,7 +32,7 @@ function renderPage(route: Route) {
     case 'day':
       return <DayPage date={route.date} />
     case 'calendar':
-      return <CalendarPage />
+      return <CalendarPage month={route.month} />
     case 'goals':
       return <GoalsPage />
     case 'settings':
