@@ -1,7 +1,8 @@
 import { AimOutlined, CalendarOutlined, ScheduleOutlined, SettingOutlined } from '@ant-design/icons'
-import { Grid, Layout, Menu, theme, Typography } from 'antd'
+import { Alert, Grid, Layout, Menu, theme, Typography } from 'antd'
 import type { ReactNode } from 'react'
 import { todayString } from './data/logic'
+import { useSaveFailed } from './data/store'
 import { navigate, useHashRoute, type Route } from './hooks/useHashRoute'
 import CalendarPage from './pages/CalendarPage'
 import DayPage from './pages/DayPage'
@@ -87,6 +88,7 @@ export default function App() {
   const screens = Grid.useBreakpoint()
   const { token } = theme.useToken()
   const isWide = screens.md ?? true
+  const saveFailed = useSaveFailed()
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -110,6 +112,15 @@ export default function App() {
         </Layout.Sider>
       )}
       <Layout.Content style={{ padding: isWide ? 24 : '16px 16px 88px', maxWidth: 1280, width: '100%' }}>
+        {saveFailed && (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: 16 }}
+            title="이 브라우저에 저장되지 않고 있습니다"
+            description="사생활 보호 모드이거나 저장 공간이 부족하면 새로고침할 때 내용이 사라집니다. 설정에서 백업 파일로 내보내 두세요."
+          />
+        )}
         {renderPage(route)}
       </Layout.Content>
       {!isWide && <BottomBar active={route.page} />}

@@ -76,6 +76,15 @@ describe('forwardTask', () => {
     expect(tasks[0].status).toBe('todo')
   })
 
+  it('refuses to forward a task that is already forwarded, done or deleted, or to the same day', () => {
+    for (const extra of [{ status: 'forwarded' as const }, { status: 'done' as const }, { deleted: true }]) {
+      const tasks = [task({ id: 'x', ...extra })]
+      expect(forwardTask(tasks, 'x', '2026-11-14', 1, () => 'n')).toBe(tasks)
+    }
+    const tasks = [task({ id: 'x' })]
+    expect(forwardTask(tasks, 'x', '2026-11-11', 1, () => 'n')).toBe(tasks)
+  })
+
   it('leaves tasks untouched when the id is unknown', () => {
     const tasks = [task({ id: 'x' })]
     expect(forwardTask(tasks, 'nope', '2026-11-14', 1, () => 'n')).toBe(tasks)

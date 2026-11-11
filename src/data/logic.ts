@@ -67,7 +67,9 @@ export function forwardTask(
   makeId: () => string = newId,
 ): readonly Task[] {
   const original = tasks.find((t) => t.id === id)
-  if (!original) return tasks
+  // 이미 미뤘거나 끝난 할일을 또 미루면 살아있는 사본이 둘이 된다 (두 탭, 두 번 클릭)
+  if (!original || original.deleted || (original.status !== 'todo' && original.status !== 'delegated')) return tasks
+  if (toDate === original.date) return tasks
   const copy: Task = {
     ...original,
     id: makeId(),

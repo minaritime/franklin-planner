@@ -33,6 +33,8 @@ export function addTask(input: TaskInput): void {
   })
 }
 
+const earlier = (a: string, b: string): string => (a < b ? a : b)
+
 export function editTask(id: string, input: TaskInput): void {
   setData((d) => ({
     ...d,
@@ -43,7 +45,7 @@ export function editTask(id: string, input: TaskInput): void {
         ...t,
         ...input,
         order: moved ? nextOrder(d.tasks, input.date, input.priority) : t.order,
-        startDate: input.dueDate ? (t.startDate ?? input.date) : undefined,
+        startDate: input.dueDate ? earlier(t.startDate ?? input.date, input.date) : undefined,
         updatedAt: Date.now(),
       }
     }),

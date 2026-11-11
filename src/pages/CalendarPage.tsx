@@ -4,10 +4,11 @@ import { useMemo, useState } from 'react'
 import MonthGrid from '../components/MonthGrid'
 import TaskForm from '../components/TaskForm'
 import { monthGrid, taskStart } from '../data/calendar'
-import { dDay, formatDDay, isActiveInstance, todayString } from '../data/logic'
+import { dDay, formatDDay, isActiveInstance } from '../data/logic'
 import { usePlanner } from '../data/store'
 import type { Task } from '../data/types'
 import { navigate } from '../hooks/useHashRoute'
+import { useToday } from '../hooks/useToday'
 import { PRIORITY_COLOR_TOKEN } from '../theme'
 import { shortDate } from '../utils/format'
 
@@ -76,7 +77,7 @@ function DeadlineList({ tasks, today, onOpen }: { tasks: readonly Task[]; today:
 
 export default function CalendarPage({ month }: CalendarPageProps) {
   const data = usePlanner()
-  const today = todayString()
+  const today = useToday()
   const current = month ?? today.slice(0, 7)
   const [year, mon] = current.split('-').map(Number)
   const isWide = Grid.useBreakpoint().md ?? true

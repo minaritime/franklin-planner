@@ -9,25 +9,38 @@ interface DayMemoProps {
 
 const SAVE_DELAY_MS = 600
 
-/** 날짜가 바뀌면 key 로 새로 만들어 쓴다 */
+/** 날짜가 바뀌면 key 로 새로 만들어 쓴다. 떠나기 전에 남은 글은 꼭 저장한다 */
 export default function DayMemo({ date, initial }: DayMemoProps) {
   const [text, setText] = useState(initial)
+  const latest = useRef(initial)
   const saved = useRef(initial)
 
-  useEffect(() => {
-    if (text === saved.current) return
-    const id = window.setTimeout(() => {
-      saveNote(date, text)
-      saved.current = text
-    }, SAVE_DELAY_MS)
-    return () => window.clearTimeout(id)
-  }, [date, text])
-
   const flush = (): void => {
-    if (text === saved.current) return
-    saveNote(date, text)
-    saved.current = text
+    if (latest.current === saved.current) return
+    saveNote(date, latest.current)
+    saved.current = latest.current
   }
+  const flushRef = useRef(flush)
+  flushRef.current = flush
+
+  useEffect(() => {
+    latest.current = text
+    if (text === saved.current) return
+    const id = window.setTimeout(() => flushRef.current(), SAVE_DELAY_MS)
+    return () => window.clearTimeout(id)
+  }, [text])
+
+  // 다른 날로 넘어가거나 탭을 닫을 때
+  useEffect(() => {
+    const onHide = (): void => flushRef.current()
+    window.addEventListener('pagehide', onHide)
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      window.removeEventListener('pagehide', onHide)
+      document.removeEventListener('visibilitychange', onHide)
+      flushRef.current()
+    }
+  }, [])
 
   return (
     <Input.TextArea

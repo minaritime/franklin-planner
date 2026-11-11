@@ -10,10 +10,11 @@ import TaskForm from '../components/TaskForm'
 import TaskList from '../components/TaskList'
 import Timeline from '../components/Timeline'
 import { bringOverdue } from '../data/actions'
-import { addDays, dDay, formatDDay, overdueTasks, periodTasksOn, tasksForDay, todayString } from '../data/logic'
+import { addDays, dDay, formatDDay, overdueTasks, periodTasksOn, tasksForDay } from '../data/logic'
 import { usePlanner } from '../data/store'
 import type { Task } from '../data/types'
 import { navigate } from '../hooks/useHashRoute'
+import { useToday } from '../hooks/useToday'
 import { fromDayjs, longDate, shortDate } from '../utils/format'
 
 interface DayPageProps {
@@ -99,7 +100,7 @@ function PeriodList({ tasks, today }: { tasks: readonly Task[]; today: string })
 
 export default function DayPage({ date }: DayPageProps) {
   const data = usePlanner()
-  const today = todayString()
+  const today = useToday()
   const [form, setForm] = useState<FormState>({ open: false })
   const [action, setAction] = useState<TaskAction | null>(null)
   const [eventDraft, setEventDraft] = useState<EventDraft | null>(null)

@@ -65,3 +65,19 @@ test('기간 할일을 만들면 달력에 막대로 보이고 눌러서 고칠 
   await bar.click()
   await expect(page.getByRole('dialog').getByLabel('할일')).toHaveValue('발표 준비')
 })
+
+test('메모를 쓰자마자 다른 날로 넘어가도 저장된다', async ({ page }) => {
+  await page.getByRole('textbox', { name: '메모' }).fill('바로 넘김')
+  await page.getByRole('button', { name: '다음날' }).click()
+  await page.getByRole('button', { name: '전날' }).click()
+  await expect(page.getByRole('textbox', { name: '메모' })).toHaveValue('바로 넘김')
+})
+
+test('망가진 저장값이 있어도 앱이 열리고 원본은 따로 보관된다', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('planner:data', '{"version":1,"tasks":[null'))
+  await page.reload()
+  await expect(page.getByRole('textbox', { name: '새 할일' })).toBeVisible()
+  await page.reload()
+  const kept = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('planner:data:corrupt-')).length)
+  expect(kept).toBe(1)
+})
