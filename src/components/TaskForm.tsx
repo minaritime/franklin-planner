@@ -116,7 +116,9 @@ export default function TaskForm({ open, task, defaultDate, onClose }: TaskFormP
           <Select
             allowClear
             placeholder="없음"
-            options={liveGoals(goals).map((g) => ({ value: g.id, label: g.title }))}
+            options={liveGoals(goals)
+              .filter((g) => g.kind === 'goal')
+              .map((g) => ({ value: g.id, label: g.title }))}
           />
         </Form.Item>
         <Form.Item name="note" label="메모" style={{ marginBottom: 0 }}>

@@ -90,3 +90,24 @@ test('망가진 저장값이 있어도 앱이 열리고 원본은 따로 보관�
   const kept = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('planner:data:corrupt-')).length)
   expect(kept).toBe(1)
 })
+
+test('목표를 만들고 할일을 연결하면 진행률에 잡힌다', async ({ page }) => {
+  await page.getByRole('menuitem', { name: '목표' }).click()
+  await page.getByRole('button', { name: '목표 추가' }).click()
+  await page.getByRole('dialog').getByLabel('목표', { exact: true }).fill('책 한 권 쓰기')
+  await page.getByRole('dialog').getByRole('button', { name: '저장' }).click()
+  await expect(page.getByText('0 / 0')).toBeVisible()
+
+  await page.getByRole('menuitem', { name: '하루' }).click()
+  await page.getByRole('textbox', { name: '새 할일' }).fill('1장 쓰기')
+  await page.getByRole('button', { name: '추가', exact: true }).click()
+  await page.getByText('1장 쓰기').click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('목표').click()
+  await page.getByTitle('책 한 권 쓰기').click()
+  await dialog.getByRole('button', { name: '저장' }).click()
+  await page.getByRole('button', { name: '완료로 표시' }).click()
+
+  await page.getByRole('menuitem', { name: '목표' }).click()
+  await expect(page.getByText('1 / 1')).toBeVisible()
+})
