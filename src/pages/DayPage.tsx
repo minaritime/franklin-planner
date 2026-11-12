@@ -144,7 +144,7 @@ export default function DayPage({ date }: DayPageProps) {
               tasks={dayTasks}
               carried={carried}
               goals={data.goals}
-              today={today}
+              day={date}
               onEdit={(task) => setForm({ open: true, task })}
               onAction={setAction}
             />

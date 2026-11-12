@@ -172,6 +172,8 @@ test('장기 할일은 마감일까지 매일 우선 업무 목록에 나오고,
   await page.getByRole('textbox', { name: '새 할일' }).press('Enter')
   await expect(page.getByText('기말 문제 만들기')).toBeVisible()
   await expect(page.getByText('장기', { exact: true })).toBeVisible()
+  // D-day 는 보고 있는 날 기준: 마감이 3일 뒤면 다음 날 페이지는 D-2
+  await expect(page.getByText(/마감 · D-2$/)).toBeVisible()
   await expect(page.getByText('완료 0 / 2')).toBeVisible()
   // 시작일 순서를 지키도록 다른 날에서는 끌기 손잡이가 없다
   await expect(page.getByLabel('순서 바꾸기')).toHaveCount(1)
@@ -181,7 +183,9 @@ test('장기 할일은 마감일까지 매일 우선 업무 목록에 나오고,
   await expect(page.getByText('기말 문제 만들기')).toBeVisible()
 
   await page.getByRole('button', { name: '다음날' }).click()
+  await expect(page.getByText(/마감 · D-1$/)).toBeVisible()
   await page.getByRole('button', { name: '다음날' }).click()
+  await expect(page.getByText(/마감 · D-day$/)).toBeVisible()
   await page.getByRole('button', { name: '다음날' }).click()
   await expect(page.getByText('할일 없음')).toBeVisible()
 })

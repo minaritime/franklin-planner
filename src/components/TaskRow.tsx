@@ -13,7 +13,8 @@ import type { TaskAction } from './TaskActionModal'
 interface TaskRowProps {
   readonly task: Task
   readonly goal: Goal | undefined
-  readonly today: string
+  /** D-day 를 세는 기준일 = 보고 있는 날 (다음 날 페이지에서는 하루 줄어든다) */
+  readonly day: string
   readonly onEdit: (task: Task) => void
   readonly onAction: (action: TaskAction) => void
   /** 목록에 보이는 번호 (그날 묶음 안의 순서) */
@@ -22,8 +23,8 @@ interface TaskRowProps {
   readonly carried?: boolean
 }
 
-function DueLabel({ dueDate, today, finished }: { dueDate: string; today: string; finished: boolean }) {
-  const days = dDay(dueDate, today)
+function DueLabel({ dueDate, day, finished }: { dueDate: string; day: string; finished: boolean }) {
+  const days = dDay(dueDate, day)
   const type = finished ? 'secondary' : days < 0 ? 'danger' : days <= 2 ? 'warning' : 'secondary'
   return (
     <Typography.Text type={type} className="num" style={{ fontSize: 12 }}>
@@ -56,7 +57,7 @@ function buildMenu(task: Task, onEdit: TaskRowProps['onEdit'], onAction: TaskRow
   return { items, onClick: ({ key }) => handlers[key]?.() }
 }
 
-export default function TaskRow({ task, goal, today, onEdit, onAction, displayOrder, carried = false }: TaskRowProps) {
+export default function TaskRow({ task, goal, day, onEdit, onAction, displayOrder, carried = false }: TaskRowProps) {
   const { token } = theme.useToken()
   const sortable = useSortable({ id: task.id, disabled: carried })
   const finished = task.status !== 'todo'
@@ -148,7 +149,7 @@ export default function TaskRow({ task, goal, today, onEdit, onAction, displayOr
           {task.forwardedFrom && task.status === 'todo' && (
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>{shortDate(task.forwardedFrom)}에서 넘어옴</Typography.Text>
           )}
-          {task.dueDate && <DueLabel dueDate={task.dueDate} today={today} finished={finished} />}
+          {task.dueDate && <DueLabel dueDate={task.dueDate} day={day} finished={finished} />}
           {goal && (
             <Tag bordered={false} style={{ marginInlineEnd: 0, fontSize: 12 }}>
               {goal.title}

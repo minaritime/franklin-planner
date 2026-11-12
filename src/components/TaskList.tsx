@@ -21,7 +21,8 @@ import { PRIORITY_OPTIONS } from './TaskForm'
 interface TaskListProps {
   readonly tasks: readonly Task[]
   readonly goals: readonly Goal[]
-  readonly today: string
+  /** 보고 있는 날. D-day 를 이 날 기준으로 센다 */
+  readonly day: string
   readonly onEdit: (task: Task) => void
   readonly onAction: (action: TaskAction) => void
   /** 다른 날 시작해 기간 안에 든 장기 할일. 각 묶음 맨 끝에 붙고 끌어서 순서를 바꾸지 못한다 */
@@ -30,7 +31,7 @@ interface TaskListProps {
 
 const GROUP_LABEL = Object.fromEntries(PRIORITY_OPTIONS.map((o) => [o.value, o.label])) as Record<Priority, string>
 
-function Group({ priority, tasks, carried, goals, today, onEdit, onAction }: TaskListProps & { priority: Priority }) {
+function Group({ priority, tasks, carried, goals, day, onEdit, onAction }: TaskListProps & { priority: Priority }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
@@ -50,7 +51,7 @@ function Group({ priority, tasks, carried, goals, today, onEdit, onAction }: Tas
       key={t.id}
       task={t}
       goal={goals.find((g) => g.id === t.goalId && !g.deleted)}
-      today={today}
+      day={day}
       onEdit={onEdit}
       onAction={onAction}
       displayOrder={i + 1}
