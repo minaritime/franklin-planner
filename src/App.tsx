@@ -1,13 +1,14 @@
 import { Alert, Grid, Layout, theme } from 'antd'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { todayString } from './data/logic'
 import { useSaveFailed } from './data/store'
 import HelpButton from './components/help/HelpButton'
-import HelpGuide from './components/help/HelpGuide'
+import HelpOverlay from './components/help/HelpOverlay'
 import { NAV } from './components/navItems'
 import SideNav, { type PageKey } from './components/SideNav'
 import { useSyncState } from './sync/status'
 import { navigate, useHashRoute, type Route } from './hooks/useHashRoute'
+import { useToday } from './hooks/useToday'
 import CalendarPage from './pages/CalendarPage'
 import DayPage from './pages/DayPage'
 import GoalsPage from './pages/GoalsPage'
@@ -37,6 +38,7 @@ function BottomBar({ active }: { active: PageKey }) {
   const { token } = theme.useToken()
   return (
     <nav
+      aria-label="화면 이동"
       style={{
         position: 'fixed',
         insetInline: 0,
@@ -83,7 +85,9 @@ export default function App() {
   const saveFailed = useSaveFailed()
   const sync = useSyncState()
   const [helpOpen, setHelpOpen] = useState(false)
+  const today = useToday()
   const openHelp = (): void => setHelpOpen(true)
+  const closeHelp = useCallback(() => setHelpOpen(false), [])
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -113,7 +117,7 @@ export default function App() {
           <HelpButton onClick={openHelp} style={{ position: 'fixed', left: 16, bottom: HELP_ABOVE_BAR, zIndex: 20 }} />
         </>
       )}
-      <HelpGuide open={helpOpen} onClose={() => setHelpOpen(false)} />
+      {helpOpen && <HelpOverlay page={route.page} today={today} isWide={isWide} onClose={closeHelp} />}
     </Layout>
   )
 }

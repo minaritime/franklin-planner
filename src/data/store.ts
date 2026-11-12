@@ -1,4 +1,4 @@
-import { createContext, useContext, useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'react'
 import { EMPTY_DATA, type PlannerData } from './types'
 import { parsePlannerData } from './validate'
 
@@ -74,13 +74,8 @@ export function subscribe(listener: Listener): () => void {
   return () => listeners.delete(listener)
 }
 
-/** 사용 설명서가 진짜 화면을 예시 데이터로 그릴 때만 채운다. 저장소는 건드리지 않는다 */
-export const PreviewDataContext = createContext<PlannerData | null>(null)
-
 export function usePlanner(): PlannerData {
-  const preview = useContext(PreviewDataContext)
-  const live = useSyncExternalStore(subscribe, getData)
-  return preview ?? live
+  return useSyncExternalStore(subscribe, getData)
 }
 
 /** 브라우저 저장에 실패하고 있는지 (사생활 보호 모드, 저장 공간 부족 등) */
