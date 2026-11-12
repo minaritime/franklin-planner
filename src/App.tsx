@@ -1,9 +1,10 @@
 import { Alert, Grid, Layout, theme } from 'antd'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { todayString } from './data/logic'
-import { useSaveFailed } from './data/store'
+import { PreviewDataContext, useSaveFailed } from './data/store'
 import HelpButton from './components/help/HelpButton'
 import HelpOverlay from './components/help/HelpOverlay'
+import { buildSampleData, sampleAnchor } from './components/help/sampleData'
 import { NAV } from './components/navItems'
 import SideNav, { type PageKey } from './components/SideNav'
 import { useSyncState } from './sync/status'
@@ -88,6 +89,9 @@ export default function App() {
   const today = useToday()
   const openHelp = (): void => setHelpOpen(true)
   const closeHelp = useCallback(() => setHelpOpen(false), [])
+  // 설명서를 켠 동안만 예시 데이터로 화면을 그린다. 저장소는 그대로라 끄면 원래 내용이 돌아온다
+  const anchor = sampleAnchor(route, today)
+  const sample = useMemo(() => (helpOpen ? buildSampleData(anchor) : null), [helpOpen, anchor])
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -109,7 +113,12 @@ export default function App() {
             description="사생활 보호 모드이거나 저장 공간이 부족하면 새로고침할 때 내용이 사라집니다. 설정에서 백업 파일로 내보내 두세요."
           />
         )}
-        {renderPage(route)}
+        <PreviewDataContext.Provider value={sample}>
+          {/* 켜고 끌 때 페이지를 새로 붙여야 메모 칸 같은 입력이 예시·원래 내용으로 바뀐다 */}
+          <div key={helpOpen ? 'guide' : 'live'} inert={helpOpen}>
+            {renderPage(route)}
+          </div>
+        </PreviewDataContext.Provider>
       </Layout.Content>
       {!isWide && (
         <>
@@ -117,7 +126,7 @@ export default function App() {
           <HelpButton onClick={openHelp} style={{ position: 'fixed', left: 16, bottom: HELP_ABOVE_BAR, zIndex: 20 }} />
         </>
       )}
-      {helpOpen && <HelpOverlay page={route.page} today={today} isWide={isWide} onClose={closeHelp} />}
+      {helpOpen && <HelpOverlay page={route.page} today={anchor} isWide={isWide} onClose={closeHelp} />}
     </Layout>
   )
 }
