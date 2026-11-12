@@ -135,8 +135,8 @@ function StepBar({ index, total, isWide, onStep, onClose }: StepBarProps) {
       <Typography.Text type="secondary" className="num" style={{ minWidth: 56, textAlign: 'center' }}>
         {total > 0 ? `${index + 1} / ${total}` : ''}
       </Typography.Text>
-      <Button shape="round" type="primary" disabled={total === 0} onClick={isLast ? onClose : () => onStep(1)}>
-        {isLast ? '끝' : '다음'}
+      <Button shape="round" type="primary" disabled={isLast} onClick={() => onStep(1)}>
+        다음
       </Button>
       <Button type="text" shape="circle" icon={<CloseOutlined />} aria-label="설명 끝내기" onClick={onClose} />
     </Flex>

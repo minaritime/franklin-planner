@@ -38,7 +38,11 @@ test('설명서를 켠 동안만 예시 할일로 화면을 채워 설명하고,
   const memoBox = (await memo.boundingBox())!
   expect(memoBox.y + memoBox.height).toBeLessThanOrEqual(view.height)
 
-  await page.keyboard.press('Escape')
+  // 마지막 번호에서는 '다음'이 꺼지고, 닫기는 옆의 ✕ 로 한다
+  await page.getByRole('button', { name: /^13\. / }).click()
+  await expect(bar.getByText('13 / 13')).toBeVisible()
+  await expect(bar.getByRole('button', { name: '다음' })).toBeDisabled()
+  await bar.getByRole('button', { name: '설명 끝내기' }).click()
   await expect(page.getByLabel('사용 설명', { exact: true })).toHaveCount(0)
   await expect(page.getByText('보고서 쓰기')).toBeVisible()
   await expect(page.getByText('학부모 상담')).toHaveCount(0)
