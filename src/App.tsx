@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { todayString } from './data/logic'
 import { useSaveFailed } from './data/store'
 import SyncBadge from './components/SyncBadge'
+import HelpGuide from './components/help/HelpGuide'
 import { useSyncState } from './sync/status'
 import { navigate, useHashRoute, type Route } from './hooks/useHashRoute'
 import CalendarPage from './pages/CalendarPage'
@@ -112,7 +113,7 @@ export default function App() {
             items={NAV.map((n) => ({ key: n.key, label: n.label, icon: n.icon }))}
             onClick={({ key }) => go(key as PageKey)}
           />
-          <div style={{ position: 'absolute', bottom: 16, left: 24, right: 16 }}>
+          <div style={{ position: 'absolute', bottom: 24, left: 64, right: 16 }}>
             <SyncBadge sync={sync} />
           </div>
         </Layout.Sider>
@@ -130,6 +131,7 @@ export default function App() {
         {renderPage(route)}
       </Layout.Content>
       {!isWide && <BottomBar active={route.page} />}
+      <HelpGuide isWide={isWide} />
     </Layout>
   )
 }
