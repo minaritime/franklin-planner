@@ -34,7 +34,13 @@ function locate(notes: readonly ScreenNote[], today: string): FoundNote[] {
  * 설명서가 떠 있는 동안 화면에서 설명할 부분을 찾고, 스크롤·창 크기가 바뀌면 상자 자리를 다시 잰다.
  * 지금 화면에 없는 부분(할일이 없어서 안 보이는 줄 등)은 빠진다.
  */
-export function useNoteBoxes(notes: readonly ScreenNote[], today: string): FoundNote[] {
+export interface NoteBoxes {
+  readonly found: readonly FoundNote[]
+  /** 지금 바로 다시 잰다 (가이드가 스크롤한 직후, 화면에 그리기 전에 부른다) */
+  readonly relocate: () => void
+}
+
+export function useNoteBoxes(notes: readonly ScreenNote[], today: string): NoteBoxes {
   const [found, setFound] = useState<FoundNote[]>([])
 
   const relocate = useCallback(() => setFound(locate(notes, today)), [notes, today])
@@ -54,5 +60,5 @@ export function useNoteBoxes(notes: readonly ScreenNote[], today: string): Found
     }
   }, [relocate])
 
-  return found
+  return { found, relocate }
 }
