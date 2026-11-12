@@ -1,10 +1,11 @@
-import { AimOutlined, CalendarOutlined, ScheduleOutlined, SettingOutlined } from '@ant-design/icons'
-import { Alert, Grid, Layout, Menu, theme, Typography } from 'antd'
-import type { ReactNode } from 'react'
+import { Alert, Grid, Layout, theme } from 'antd'
+import { useState } from 'react'
 import { todayString } from './data/logic'
 import { useSaveFailed } from './data/store'
-import SyncBadge from './components/SyncBadge'
+import HelpButton from './components/help/HelpButton'
 import HelpGuide from './components/help/HelpGuide'
+import { NAV } from './components/navItems'
+import SideNav, { type PageKey } from './components/SideNav'
 import { useSyncState } from './sync/status'
 import { navigate, useHashRoute, type Route } from './hooks/useHashRoute'
 import CalendarPage from './pages/CalendarPage'
@@ -12,20 +13,8 @@ import DayPage from './pages/DayPage'
 import GoalsPage from './pages/GoalsPage'
 import SettingsPage from './pages/SettingsPage'
 
-type PageKey = Route['page']
-
-interface NavItem {
-  readonly key: PageKey
-  readonly label: string
-  readonly icon: ReactNode
-}
-
-const NAV: readonly NavItem[] = [
-  { key: 'day', label: '하루', icon: <ScheduleOutlined /> },
-  { key: 'calendar', label: '달력', icon: <CalendarOutlined /> },
-  { key: 'goals', label: '목표', icon: <AimOutlined /> },
-  { key: 'settings', label: '설정', icon: <SettingOutlined /> },
-]
+/** 좁은 화면에서 ? 버튼을 아래 탭 막대 위로 띄우는 거리 */
+const HELP_ABOVE_BAR = 88
 
 function go(key: PageKey): void {
   navigate(key === 'day' ? { page: 'day', date: todayString() } : { page: key })
@@ -93,6 +82,8 @@ export default function App() {
   const isWide = screens.md ?? true
   const saveFailed = useSaveFailed()
   const sync = useSyncState()
+  const [helpOpen, setHelpOpen] = useState(false)
+  const openHelp = (): void => setHelpOpen(true)
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -101,21 +92,7 @@ export default function App() {
           width={200}
           style={{ borderRight: `1px solid ${token.colorSplit}`, position: 'sticky', top: 0, height: '100vh', overflow: 'auto' }}
         >
-          <div style={{ padding: '20px 24px 16px' }}>
-            <Typography.Text strong style={{ fontSize: 16 }}>
-              플래너
-            </Typography.Text>
-          </div>
-          <Menu
-            mode="inline"
-            selectedKeys={[route.page]}
-            style={{ borderInlineEnd: 0 }}
-            items={NAV.map((n) => ({ key: n.key, label: n.label, icon: n.icon }))}
-            onClick={({ key }) => go(key as PageKey)}
-          />
-          <div style={{ position: 'absolute', bottom: 24, left: 64, right: 16 }}>
-            <SyncBadge sync={sync} />
-          </div>
+          <SideNav items={NAV} active={route.page} sync={sync} onSelect={go} corner={<HelpButton onClick={openHelp} />} />
         </Layout.Sider>
       )}
       <Layout.Content style={{ padding: isWide ? 24 : '16px 16px 88px', maxWidth: 1280, width: '100%' }}>
@@ -130,8 +107,13 @@ export default function App() {
         )}
         {renderPage(route)}
       </Layout.Content>
-      {!isWide && <BottomBar active={route.page} />}
-      <HelpGuide isWide={isWide} />
+      {!isWide && (
+        <>
+          <BottomBar active={route.page} />
+          <HelpButton onClick={openHelp} style={{ position: 'fixed', left: 16, bottom: HELP_ABOVE_BAR, zIndex: 20 }} />
+        </>
+      )}
+      <HelpGuide open={helpOpen} onClose={() => setHelpOpen(false)} />
     </Layout>
   )
 }
