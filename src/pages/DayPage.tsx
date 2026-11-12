@@ -10,7 +10,7 @@ import TaskForm from '../components/TaskForm'
 import TaskList from '../components/TaskList'
 import Timeline, { type TimelineBlock } from '../components/Timeline'
 import { bringOverdue } from '../data/actions'
-import { addDays, dDay, formatDDay, overdueTasks, periodTasksOn, tasksForDay } from '../data/logic'
+import { addDays, carriedLongTasks, dDay, overdueTasks, tasksForDay } from '../data/logic'
 import { usePlanner } from '../data/store'
 import type { Task } from '../data/types'
 import { navigate } from '../hooks/useHashRoute'
@@ -82,22 +82,6 @@ function OverdueNotice({ tasks, today }: { tasks: readonly Task[]; today: string
   )
 }
 
-function PeriodList({ tasks, today }: { tasks: readonly Task[]; today: string }) {
-  if (tasks.length === 0) return null
-  return (
-    <Card title="진행 중인 장기 할일" style={{ marginTop: 16 }}>
-      {tasks.map((t) => (
-        <Flex key={t.id} justify="space-between" gap={8} style={{ padding: '4px 0', cursor: 'pointer' }} onClick={() => goTo(t.date)}>
-          <Typography.Text ellipsis>{t.title}</Typography.Text>
-          <Typography.Text type="secondary" className="num" style={{ flex: 'none', fontSize: 12 }}>
-            ~{shortDate(t.dueDate!)} · {formatDDay(dDay(t.dueDate!, today))}
-          </Typography.Text>
-        </Flex>
-      ))}
-    </Card>
-  )
-}
-
 export default function DayPage({ date }: DayPageProps) {
   const data = usePlanner()
   const today = useToday()
@@ -107,10 +91,7 @@ export default function DayPage({ date }: DayPageProps) {
 
   const dayTasks = useMemo(() => tasksForDay(data.tasks, date), [data.tasks, date])
   const overdue = useMemo(() => (date === today ? overdueTasks(data.tasks, today) : []), [data.tasks, date, today])
-  const period = useMemo(
-    () => periodTasksOn(data.tasks, date).filter((t) => t.date !== date && t.status === 'todo'),
-    [data.tasks, date],
-  )
+  const carried = useMemo(() => carriedLongTasks(data.tasks, date), [data.tasks, date])
   const blocks = useMemo<TimelineBlock[]>(() => {
     const eventBlocks = data.events
       .filter((e) => e.date === date && !e.deleted)
@@ -139,7 +120,8 @@ export default function DayPage({ date }: DayPageProps) {
     if (event) setEventDraft({ event })
   }
   const note = data.notes.find((n) => n.date === date)?.text ?? ''
-  const doneCount = dayTasks.filter((t) => t.status === 'done').length
+  const listed = [...dayTasks, ...carried]
+  const doneCount = listed.filter((t) => t.status === 'done').length
 
   return (
     <>
@@ -150,9 +132,9 @@ export default function DayPage({ date }: DayPageProps) {
           <Card
             title="우선 업무"
             extra={
-              dayTasks.length > 0 && (
+              listed.length > 0 && (
                 <Typography.Text type="secondary" className="num">
-                  완료 {doneCount} / {dayTasks.length}
+                  완료 {doneCount} / {listed.length}
                 </Typography.Text>
               )
             }
@@ -160,13 +142,13 @@ export default function DayPage({ date }: DayPageProps) {
             <QuickAdd date={date} />
             <TaskList
               tasks={dayTasks}
+              carried={carried}
               goals={data.goals}
               today={today}
               onEdit={(task) => setForm({ open: true, task })}
               onAction={setAction}
             />
           </Card>
-          <PeriodList tasks={period} today={today} />
         </Col>
         <Col xs={24} lg={9}>
           <Flex vertical gap={16}>

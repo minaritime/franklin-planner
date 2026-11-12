@@ -18,10 +18,10 @@ test('설명서를 켠 동안만 예시 할일로 화면을 채워 설명하고,
   await expect(page.getByText('학부모 상담').first()).toBeVisible()
   await expect(page.getByText('보고서 쓰기')).toHaveCount(0)
   await expect(page.getByRole('dialog', { name: '화면 바꾸기' })).toBeVisible()
-  await expect(page.getByRole('button', { name: /^13\. / })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^12\. / })).toBeVisible()
 
   const bar = page.getByRole('toolbar', { name: '설명 넘기기' })
-  await expect(bar.getByText('1 / 13')).toBeVisible()
+  await expect(bar.getByText('1 / 12')).toBeVisible()
   await bar.getByRole('button', { name: '다음' }).click()
   await expect(page.getByRole('dialog', { name: '날짜 옮기기' })).toBeVisible()
   await page.getByRole('button', { name: /\. 우선순위$/ }).click()
@@ -29,7 +29,7 @@ test('설명서를 켠 동안만 예시 할일로 화면을 채워 설명하고,
 
   // 화면 아래쪽 부분으로 넘어가면 애니메이션 없이 바로 스크롤되고 틀도 같이 옮겨 간다
   // 메모 칸은 화면 아래쪽이라 번호가 화면 밖에 있다. 고정된 '다음' 막대로 넘어간다
-  for (let i = 0; i < 13 && !(await page.getByRole('dialog', { name: '메모' }).isVisible()); i++) {
+  for (let i = 0; i < 12 && !(await page.getByRole('dialog', { name: '메모' }).isVisible()); i++) {
     await bar.getByRole('button', { name: '다음' }).click()
   }
   const memo = page.getByRole('textbox', { name: '메모' })
@@ -39,8 +39,8 @@ test('설명서를 켠 동안만 예시 할일로 화면을 채워 설명하고,
   expect(memoBox.y + memoBox.height).toBeLessThanOrEqual(view.height)
 
   // 마지막 번호에서는 '다음'이 꺼지고, 닫기는 옆의 ✕ 로 한다
-  await page.getByRole('button', { name: /^13\. / }).click()
-  await expect(bar.getByText('13 / 13')).toBeVisible()
+  await page.getByRole('button', { name: /^12\. / }).click()
+  await expect(bar.getByText('12 / 12')).toBeVisible()
   await expect(bar.getByRole('button', { name: '다음' })).toBeDisabled()
   await bar.getByRole('button', { name: '설명 끝내기' }).click()
   await expect(page.getByLabel('사용 설명', { exact: true })).toHaveCount(0)

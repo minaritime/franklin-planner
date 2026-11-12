@@ -151,3 +151,37 @@ test('수정 창에서 시간을 정하면 시간표에 올라가고 지우면 �
   await page.getByRole('dialog').getByRole('button', { name: '저장' }).click()
   await expect(page.getByRole('button', { name: /보고서.*16:00~17:30/ })).toBeHidden()
 })
+
+test('장기 할일은 마감일까지 매일 우선 업무 목록에 나오고, 다른 날에서 체크해도 완료된다', async ({ page }) => {
+  await page.getByRole('button', { name: '장기 할일 추가' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('할일').fill('기말 문제 만들기')
+  await dialog.getByLabel('마감일').click()
+  const due = await page.evaluate(() => {
+    const t = new Date()
+    t.setDate(t.getDate() + 3)
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+  })
+  await dialog.getByLabel('마감일').fill(due)
+  await page.keyboard.press('Enter')
+  await dialog.getByRole('button', { name: '저장' }).click()
+  await expect(dialog).toBeHidden()
+
+  await page.getByRole('button', { name: '다음날' }).click()
+  await page.getByRole('textbox', { name: '새 할일' }).fill('다음날 할일')
+  await page.getByRole('textbox', { name: '새 할일' }).press('Enter')
+  await expect(page.getByText('기말 문제 만들기')).toBeVisible()
+  await expect(page.getByText('장기', { exact: true })).toBeVisible()
+  await expect(page.getByText('완료 0 / 2')).toBeVisible()
+  // 시작일 순서를 지키도록 다른 날에서는 끌기 손잡이가 없다
+  await expect(page.getByLabel('순서 바꾸기')).toHaveCount(1)
+
+  await page.getByRole('button', { name: '완료로 표시' }).last().click()
+  await expect(page.getByText('완료 1 / 2')).toBeVisible()
+  await expect(page.getByText('기말 문제 만들기')).toBeVisible()
+
+  await page.getByRole('button', { name: '다음날' }).click()
+  await page.getByRole('button', { name: '다음날' }).click()
+  await page.getByRole('button', { name: '다음날' }).click()
+  await expect(page.getByText('할일 없음')).toBeVisible()
+})

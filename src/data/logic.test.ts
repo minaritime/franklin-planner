@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   addDays,
   bringToDay,
+  carriedLongTasks,
   cyclePriority,
   dDay,
   delegateTask,
@@ -164,6 +165,31 @@ describe('periodTasksOn', () => {
       task({ id: 'nodue' }),
     ]
     expect(periodTasksOn(tasks, '2026-11-11').map((t) => t.id)).toEqual(['in'])
+  })
+})
+
+describe('carriedLongTasks', () => {
+  it('시작일이 아닌 날에도 기간 안이면 그날 목록에 같이 나온다 (우선순위·번호 순)', () => {
+    const tasks = [
+      task({ id: 'b', priority: 'B', date: '2026-11-10', startDate: '2026-11-10', dueDate: '2026-11-15' }),
+      task({ id: 'a', priority: 'A', date: '2026-11-09', startDate: '2026-11-09', dueDate: '2026-11-12' }),
+      task({ id: 'home', date: '2026-11-11', startDate: '2026-11-11', dueDate: '2026-11-15' }),
+      task({ id: 'plain', date: '2026-11-11' }),
+    ]
+    expect(carriedLongTasks(tasks, '2026-11-11').map((t) => t.id)).toEqual(['a', 'b'])
+  })
+
+  it('완료·맡김은 남기고 취소·미룸·삭제·기간 밖은 뺀다', () => {
+    const long = { date: '2026-11-10', startDate: '2026-11-10', dueDate: '2026-11-15' }
+    const tasks = [
+      task({ id: 'done', ...long, status: 'done' }),
+      task({ id: 'deleg', ...long, status: 'delegated' }),
+      task({ id: 'cancel', ...long, status: 'cancelled' }),
+      task({ id: 'fwd', ...long, status: 'forwarded' }),
+      task({ id: 'del', ...long, deleted: true }),
+      task({ id: 'over', date: '2026-11-01', startDate: '2026-11-01', dueDate: '2026-11-05' }),
+    ]
+    expect(carriedLongTasks(tasks, '2026-11-11').map((t) => t.id)).toEqual(['done', 'deleg'])
   })
 })
 

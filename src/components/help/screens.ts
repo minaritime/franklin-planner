@@ -57,7 +57,7 @@ const DAY_NOTES: readonly ScreenNote[] = [
   },
   {
     title: '장기 할일 추가',
-    desc: '며칠에 걸쳐 하는 일을 시작일과 마감일을 정해 넣습니다. 마감 전까지 매일 아래쪽에 보입니다.',
+    desc: '며칠에 걸쳐 하는 일을 시작일과 마감일을 정해 넣습니다. 마감일까지 매일 우선 업무 목록에 "장기" 표시와 함께 나옵니다.',
     find: byButton('장기 할일 추가'),
   },
   {
@@ -89,11 +89,6 @@ const DAY_NOTES: readonly ScreenNote[] = [
     title: '더보기 메뉴',
     desc: '미루기(다른 날로 옮김), 맡기기(다른 사람에게 넘김), 취소, 삭제를 고릅니다.',
     find: byLabel('더보기'),
-  },
-  {
-    title: '진행 중인 장기 할일',
-    desc: '오늘이 기간 안에 든 장기 할일과 마감까지 남은 날(D-day)이 보입니다.',
-    find: byCard('진행 중인 장기 할일'),
   },
   {
     title: '일정표',

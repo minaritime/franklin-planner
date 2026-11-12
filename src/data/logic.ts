@@ -132,6 +132,16 @@ export function periodTasksOn(tasks: readonly Task[], date: string): Task[] {
   )
 }
 
+/**
+ * 시작일이 아닌 날의 우선 업무 목록에 같이 보여 줄 장기 할일.
+ * 기간 안이면 매일 나와서 잊지 않게 한다. 완료·맡김도 그대로 보여 주고(체크하자마자 사라지지 않게) 취소·미룸은 뺀다.
+ */
+export function carriedLongTasks(tasks: readonly Task[], date: string): Task[] {
+  return periodTasksOn(tasks, date)
+    .filter((t) => t.date !== date)
+    .sort(byPriorityThenOrder)
+}
+
 export function dDay(dueDate: string, today: string): number {
   return Math.round((toUtc(dueDate) - toUtc(today)) / DAY_MS)
 }

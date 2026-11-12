@@ -16,6 +16,10 @@ interface TaskRowProps {
   readonly today: string
   readonly onEdit: (task: Task) => void
   readonly onAction: (action: TaskAction) => void
+  /** 목록에 보이는 번호 (그날 묶음 안의 순서) */
+  readonly displayOrder: number
+  /** 다른 날 시작한 장기 할일이 그날 목록에 같이 나온 줄. 순서는 시작일 기준이라 끌어서 바꾸지 못한다 */
+  readonly carried?: boolean
 }
 
 function DueLabel({ dueDate, today, finished }: { dueDate: string; today: string; finished: boolean }) {
@@ -52,9 +56,9 @@ function buildMenu(task: Task, onEdit: TaskRowProps['onEdit'], onAction: TaskRow
   return { items, onClick: ({ key }) => handlers[key]?.() }
 }
 
-export default function TaskRow({ task, goal, today, onEdit, onAction }: TaskRowProps) {
+export default function TaskRow({ task, goal, today, onEdit, onAction, displayOrder, carried = false }: TaskRowProps) {
   const { token } = theme.useToken()
-  const sortable = useSortable({ id: task.id })
+  const sortable = useSortable({ id: task.id, disabled: carried })
   const finished = task.status !== 'todo'
   const struck = task.status === 'done' || task.status === 'cancelled' || task.status === 'forwarded'
 
@@ -76,14 +80,20 @@ export default function TaskRow({ task, goal, today, onEdit, onAction }: TaskRow
         zIndex: sortable.isDragging ? 1 : undefined,
       }}
     >
-      <span
-        {...sortable.attributes}
-        {...sortable.listeners}
-        style={{ color: token.colorTextQuaternary, cursor: 'grab', lineHeight: '22px', touchAction: 'none' }}
-        aria-label="순서 바꾸기"
-      >
-        <HolderOutlined />
-      </span>
+      {carried ? (
+        <span style={{ visibility: 'hidden', lineHeight: '22px' }}>
+          <HolderOutlined />
+        </span>
+      ) : (
+        <span
+          {...sortable.attributes}
+          {...sortable.listeners}
+          style={{ color: token.colorTextQuaternary, cursor: 'grab', lineHeight: '22px', touchAction: 'none' }}
+          aria-label="순서 바꾸기"
+        >
+          <HolderOutlined />
+        </span>
+      )}
       <span style={{ paddingTop: 1 }}>
         <StatusMark task={task} onToggle={toggle} />
       </span>
@@ -107,7 +117,7 @@ export default function TaskRow({ task, goal, today, onEdit, onAction }: TaskRow
         }}
       >
         {task.priority}
-        {task.order}
+        {displayOrder}
       </button>
       <Flex vertical style={{ flex: 1, minWidth: 0 }} gap={2}>
         <Typography.Text
@@ -124,6 +134,11 @@ export default function TaskRow({ task, goal, today, onEdit, onAction }: TaskRow
           {task.title}
         </Typography.Text>
         <Flex gap={8} wrap align="center">
+          {task.startDate && (
+            <Tag color="blue" bordered={false} style={{ marginInlineEnd: 0, fontSize: 12 }}>
+              장기
+            </Tag>
+          )}
           {task.status === 'forwarded' && task.forwardedTo && (
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>→ {shortDate(task.forwardedTo)}</Typography.Text>
           )}

@@ -24,11 +24,13 @@ interface TaskListProps {
   readonly today: string
   readonly onEdit: (task: Task) => void
   readonly onAction: (action: TaskAction) => void
+  /** 다른 날 시작해 기간 안에 든 장기 할일. 각 묶음 맨 끝에 붙고 끌어서 순서를 바꾸지 못한다 */
+  readonly carried: readonly Task[]
 }
 
 const GROUP_LABEL = Object.fromEntries(PRIORITY_OPTIONS.map((o) => [o.value, o.label])) as Record<Priority, string>
 
-function Group({ priority, tasks, goals, today, onEdit, onAction }: TaskListProps & { priority: Priority }) {
+function Group({ priority, tasks, carried, goals, today, onEdit, onAction }: TaskListProps & { priority: Priority }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
@@ -41,7 +43,20 @@ function Group({ priority, tasks, goals, today, onEdit, onAction }: TaskListProp
     reorder(arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id))))
   }
 
-  const done = tasks.filter((t) => t.status === 'done').length
+  const shown = [...tasks, ...carried]
+  const done = shown.filter((t) => t.status === 'done').length
+  const row = (t: Task, i: number, isCarried: boolean) => (
+    <TaskRow
+      key={t.id}
+      task={t}
+      goal={goals.find((g) => g.id === t.goalId && !g.deleted)}
+      today={today}
+      onEdit={onEdit}
+      onAction={onAction}
+      displayOrder={i + 1}
+      carried={isCarried}
+    />
+  )
 
   return (
     <section>
@@ -50,36 +65,29 @@ function Group({ priority, tasks, goals, today, onEdit, onAction }: TaskListProp
           {GROUP_LABEL[priority]}
         </Typography.Text>
         <Typography.Text type="secondary" className="num" style={{ fontSize: 12 }}>
-          {done}/{tasks.length}
+          {done}/{shown.length}
         </Typography.Text>
       </Flex>
       <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEnd}>
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-          {tasks.map((t) => (
-            <TaskRow
-              key={t.id}
-              task={t}
-              goal={goals.find((g) => g.id === t.goalId && !g.deleted)}
-              today={today}
-              onEdit={onEdit}
-              onAction={onAction}
-            />
-          ))}
+          {tasks.map((t, i) => row(t, i, false))}
         </SortableContext>
+        {carried.map((t, i) => row(t, tasks.length + i, true))}
       </DndContext>
     </section>
   )
 }
 
 export default function TaskList(props: TaskListProps) {
-  if (props.tasks.length === 0) {
+  if (props.tasks.length === 0 && props.carried.length === 0) {
     return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="할일 없음" style={{ margin: '32px 0' }} />
   }
   return (
     <Flex vertical gap={24}>
       {PRIORITIES.map((p) => {
         const group = props.tasks.filter((t) => t.priority === p)
-        return group.length > 0 ? <Group key={p} {...props} priority={p} tasks={group} /> : null
+        const carried = props.carried.filter((t) => t.priority === p)
+        return group.length + carried.length > 0 ? <Group key={p} {...props} priority={p} tasks={group} carried={carried} /> : null
       })}
     </Flex>
   )
