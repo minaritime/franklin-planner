@@ -96,6 +96,7 @@ test('작은 달력 날짜를 누르면 큰 달력이 그 달로 가고, 시간 
   await page.getByLabel('2026-12-10 큰 달력에서 보기').click()
   await expect(page).toHaveURL(/#\/calendar\/month\/2026-12-10$/)
   await expect(page.getByText('2026년 12월').first()).toBeVisible()
+  await expect(page.getByText('12월 10일 계획')).toBeVisible()
 
   await page.goto('./#/calendar/month/2026-11-14')
   await page.getByRole('button', { name: '추가' }).first().click()
@@ -108,4 +109,7 @@ test('작은 달력 날짜를 누르면 큰 달력이 그 달로 가고, 시간 
   const bar = page.locator('button[data-item-key^="event:"]').first()
   await expect(bar).toContainText('여행')
   await expect(bar).not.toContainText('09:00')
+  // 고른 날의 계획 칸에도 바로 나온다
+  await page.getByLabel('2026-11-16 큰 달력에서 보기').click()
+  await expect(page.getByLabel('11월 16일 계획').getByText('여행')).toBeVisible()
 })

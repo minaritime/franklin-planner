@@ -167,7 +167,7 @@ export default function CalendarPage({ view: routeView, date: routeDate }: Calen
           <Flex vertical gap={16}>
             <MiniCalendar date={date} today={today} onPick={(d) => go(view, d)} />
             <DeadlineCard tasks={data.tasks} today={today} onOpen={(item) => setDrawer({ mode: 'view', item })} />
-            <TodayCard today={today} onOpen={(item) => setDrawer({ mode: 'view', item })} onOpenPlan={() => navigate({ page: 'day', date: today })} />
+            <TodayCard date={date} today={today} onOpen={(item) => setDrawer({ mode: 'view', item })} onOpenPlan={() => navigate({ page: 'day', date })} />
           </Flex>
         </Col>
       </Row>
