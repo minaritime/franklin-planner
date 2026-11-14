@@ -18,8 +18,11 @@ interface ItemChipProps {
 export const isFinished = (item: CalItem): boolean => item.kind === 'task' && item.status !== 'todo'
 const isStruck = (item: CalItem): boolean => item.status === 'done' || item.status === 'cancelled'
 
+/** 여러 날 이어지는 것은 시간을 적지 않는다 */
+const showsTime = (item: CalItem): boolean => item.start !== undefined && !item.allDay && item.endDate === item.date
+
 export function chipTitle(item: CalItem): string {
-  const time = item.start ? `${item.start}–${item.end} ` : ''
+  const time = showsTime(item) ? `${item.start}–${item.end} ` : ''
   const prefix = item.priority ? `[${item.priority}] ` : ''
   return `${prefix}${time}${item.title}`
 }
@@ -70,7 +73,7 @@ export default function ItemChip({ item, color, onOpen, onDragStart, style, hide
           {item.priority}
         </span>
       )}
-      {item.start && !hideTime && (
+      {showsTime(item) && !hideTime && (
         <span className="num" style={{ flex: 'none', color: finished ? undefined : colors.line }}>
           {item.start}
         </span>

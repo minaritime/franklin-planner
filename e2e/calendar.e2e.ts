@@ -90,3 +90,22 @@ test('보기를 바꾸면 주소에 남고, 주 보기에서 빈 시간을 끌�
   await expect(drawer.locator('input[value="10:00"]')).toBeVisible()
   await expect(drawer.locator('input[value="11:30"]')).toBeVisible()
 })
+
+test('작은 달력 날짜를 누르면 큰 달력이 그 달로 가고, 시간 없는 기간 일정은 시간 없이 보인다', async ({ page }) => {
+  await page.getByRole('button', { name: '작은 달력 다음 달' }).click()
+  await page.getByLabel('2026-12-10 큰 달력에서 보기').click()
+  await expect(page).toHaveURL(/#\/calendar\/month\/2026-12-10$/)
+  await expect(page.getByText('2026년 12월').first()).toBeVisible()
+
+  await page.goto('./#/calendar/month/2026-11-14')
+  await page.getByRole('button', { name: '추가' }).first().click()
+  const drawer = page.locator('.ant-drawer-open')
+  await drawer.getByText('일정', { exact: true }).click()
+  await drawer.getByLabel('제목').fill('여행')
+  await drawer.locator('.ant-picker').nth(1).click()
+  await page.locator('.ant-picker-dropdown:visible td[title="2026-11-18"]').click()
+  await drawer.getByRole('button', { name: '저장' }).click()
+  const bar = page.locator('button[data-item-key^="event:"]').first()
+  await expect(bar).toContainText('여행')
+  await expect(bar).not.toContainText('09:00')
+})

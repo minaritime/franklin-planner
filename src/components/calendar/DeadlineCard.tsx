@@ -1,4 +1,4 @@
-import { Card, Empty, Flex, theme, Typography } from 'antd'
+import { Card, Flex, theme, Typography } from 'antd'
 import { taskStart } from '../../data/calendar'
 import { itemOfTask, type CalItem } from '../../data/calendarItems'
 import { dDay, formatDDay, isActiveInstance } from '../../data/logic'
@@ -28,7 +28,7 @@ export default function DeadlineCard({ tasks, today, onOpen }: DeadlineCardProps
 
   return (
     <Card title="마감 일정" extra={deadlines.length > 0 && <Typography.Text type="secondary" className="num">{deadlines.length}</Typography.Text>}>
-      {deadlines.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="마감 있는 할일 없음" />}
+      {deadlines.length === 0 && <Typography.Text type="secondary">마감 있는 할일 없음</Typography.Text>}
       {deadlines.map((t, i) => {
         const days = dDay(t.dueDate!, today)
         const urgent = days <= 2

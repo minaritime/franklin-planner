@@ -74,7 +74,8 @@ export function toEventFields(v: EventFormValues): EventFields {
     categoryId: v.categoryId,
     date,
     endDate: endDate && endDate > date ? endDate : undefined,
-    allDay: v.allDay || undefined,
+    // 시간을 안 고르면 종일 일정 (예전처럼 9시로 채우지 않는다)
+    allDay: v.allDay || !v.time || undefined,
     start: v.time ? v.time[0].format(TIME_FMT) : DEFAULT_START,
     end: v.time ? v.time[1].format(TIME_FMT) : DEFAULT_END,
     repeat:

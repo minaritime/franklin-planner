@@ -1,4 +1,4 @@
-import { App, Card, Col, Grid, Modal, Row, Typography, type InputRef } from 'antd'
+import { App, Card, Col, Flex, Grid, Modal, Row, Typography, type InputRef } from 'antd'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import AgendaView from '../components/calendar/AgendaView'
 import { applyMove, applyResize } from '../components/calendar/applyDrop'
@@ -8,7 +8,9 @@ import DeadlineCard from '../components/calendar/DeadlineCard'
 import { dragPreview } from '../components/calendar/dragPreview'
 import { formatMinutes } from '../components/calendar/gridMetrics'
 import ItemDrawer, { type DrawerState } from '../components/calendar/ItemDrawer'
+import MiniCalendar from '../components/calendar/MiniCalendar'
 import MonthView from '../components/calendar/MonthView'
+import TodayCard from '../components/calendar/TodayCard'
 import TimeGridView from '../components/calendar/TimeGridView'
 import { useCalendarDrag, type DragState } from '../components/calendar/useCalendarDrag'
 import { SHORTCUT_LINES, useCalendarKeys } from '../components/calendar/useCalendarKeys'
@@ -162,7 +164,11 @@ export default function CalendarPage({ view: routeView, date: routeDate }: Calen
           </Card>
         </Col>
         <Col xs={24} xl={6}>
-          <DeadlineCard tasks={data.tasks} today={today} onOpen={(item) => setDrawer({ mode: 'view', item })} />
+          <Flex vertical gap={16}>
+            <MiniCalendar date={date} today={today} onPick={(d) => go(view, d)} />
+            <DeadlineCard tasks={data.tasks} today={today} onOpen={(item) => setDrawer({ mode: 'view', item })} />
+            <TodayCard today={today} onOpen={(item) => setDrawer({ mode: 'view', item })} onOpenPlan={() => navigate({ page: 'day', date: today })} />
+          </Flex>
         </Col>
       </Row>
       <ItemDrawer state={drawer} today={today} onChange={setDrawer} onOpenDay={(d) => navigate({ page: 'day', date: d })} />
