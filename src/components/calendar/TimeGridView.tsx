@@ -1,6 +1,6 @@
 import { PlusOutlined } from '@ant-design/icons'
 import { Button, theme, Typography } from 'antd'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { placeBars, singleDayItems, sortForDay, type CalItem } from '../../data/calendarItems'
 import { layoutEvents } from '../../data/timeline'
 import type { Category } from '../../data/types'
@@ -175,12 +175,28 @@ function DayColumn({ date, props, nowMinutes }: { date: string; props: TimeGridV
   )
 }
 
+/** 세로 스크롤바가 차지하는 폭 (겹쳐 그리는 스크롤바면 0) */
+function useScrollbarWidth(ref: RefObject<HTMLDivElement | null>): number {
+  const [width, setWidth] = useState(0)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = (): void => setWidth(el.offsetWidth - el.clientWidth)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [ref])
+  return width
+}
+
 export default function TimeGridView(props: TimeGridViewProps) {
   const { token } = theme.useToken()
   const scrollRef = useRef<HTMLDivElement>(null)
   const nowMinutes = useNowMinutes(props.days.includes(props.today))
   const firstDay = props.days[0]
   const showsToday = props.days.includes(props.today)
+  const gutter = useScrollbarWidth(scrollRef)
 
   // 처음 열 때 아침 8시(오늘이 보이면 지금 시각 조금 위)부터 보이게
   useEffect(() => {
@@ -193,8 +209,11 @@ export default function TimeGridView(props: TimeGridViewProps) {
 
   return (
     <div>
-      <DayHeaders days={props.days} today={props.today} onOpenDay={props.onOpenDay} />
-      <AllDayRow {...props} />
+      {/* 아래 시간 칸에만 세로 스크롤바가 생기므로 위 두 줄도 그 폭만큼 비워 세로선을 맞춘다 */}
+      <div style={{ paddingInlineEnd: gutter }}>
+        <DayHeaders days={props.days} today={props.today} onOpenDay={props.onOpenDay} />
+        <AllDayRow {...props} />
+      </div>
       <div ref={scrollRef} style={{ height: 'max(420px, calc(100vh - 330px))', overflowY: 'auto', position: 'relative' }}>
         <div style={{ display: 'flex' }}>
           <div style={{ width: LABEL_WIDTH, flex: 'none', position: 'relative' }}>

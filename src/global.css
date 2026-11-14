@@ -12,3 +12,36 @@ body {
 .num {
   font-variant-numeric: tabular-nums;
 }
+
+/* 스크롤바: 얇게, 테마 색으로 (색은 ThemeCssVars 가 넣는다) */
+:root {
+  --scrollbar-thumb: rgba(0, 0, 0, 0.25);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.45);
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+* {
+  scrollbar-width: thin;
+}
+
+/* scrollbar-color 를 모르는 브라우저(사파리 등)용 */
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: var(--scrollbar-thumb) padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover) padding-box;
+  }
+}
