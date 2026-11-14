@@ -2,7 +2,7 @@ import { mergeData } from '../data/logic'
 import type { PlannerData } from '../data/types'
 import { parsePlannerData } from '../data/validate'
 
-export const COLLECTIONS = ['tasks', 'events', 'notes', 'goals'] as const
+export const COLLECTIONS = ['tasks', 'events', 'notes', 'goals', 'categories'] as const
 export type CollectionName = (typeof COLLECTIONS)[number]
 
 interface Stamped {

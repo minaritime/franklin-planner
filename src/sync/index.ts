@@ -1,4 +1,4 @@
-import { getData, setData, subscribe } from '../data/store'
+import { clearUndo, getData, setData, subscribe } from '../data/store'
 import { EMPTY_DATA } from '../data/types'
 import { FIREBASE_CONFIG } from './config'
 import { createSyncEngine, type SyncEngine } from './engine'
@@ -83,6 +83,9 @@ export async function signOutSync(clearDevice: boolean): Promise<boolean> {
   if (clearDevice && !allSaved) return false
   stopEngine()
   await fb.signOutUser()
-  if (clearDevice) setData(() => EMPTY_DATA)
+  if (clearDevice) {
+    setData(() => EMPTY_DATA)
+    clearUndo()
+  }
   return true
 }

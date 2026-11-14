@@ -1,132 +1,172 @@
-import { LeftOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons'
-import { Button, Card, Col, Empty, Flex, Grid, Row, theme, Typography } from 'antd'
-import { useMemo, useState } from 'react'
-import MonthGrid from '../components/MonthGrid'
-import TaskForm from '../components/TaskForm'
-import { monthGrid, taskStart } from '../data/calendar'
-import { dDay, formatDDay, isActiveInstance } from '../data/logic'
-import { usePlanner } from '../data/store'
-import type { Task } from '../data/types'
+import { App, Card, Col, Grid, Modal, Row, Typography, type InputRef } from 'antd'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import AgendaView from '../components/calendar/AgendaView'
+import { applyMove, applyResize } from '../components/calendar/applyDrop'
+import CalendarToolbar from '../components/calendar/CalendarToolbar'
+import CategoryBar from '../components/calendar/CategoryBar'
+import DeadlineCard from '../components/calendar/DeadlineCard'
+import { dragPreview } from '../components/calendar/dragPreview'
+import { formatMinutes } from '../components/calendar/gridMetrics'
+import ItemDrawer, { type DrawerState } from '../components/calendar/ItemDrawer'
+import MonthView from '../components/calendar/MonthView'
+import TimeGridView from '../components/calendar/TimeGridView'
+import { useCalendarDrag, type DragState } from '../components/calendar/useCalendarDrag'
+import { SHORTCUT_LINES, useCalendarKeys } from '../components/calendar/useCalendarKeys'
+import { useScopeAsk } from '../components/calendar/useScopeAsk'
+import {
+  buildItems,
+  NO_CATEGORY,
+  rangeFor,
+  stepDate,
+  titleFor,
+  weeksOfMonth,
+  type CalItem,
+  type CalView,
+  type WeekStart,
+} from '../data/calendarItems'
+import { addDays } from '../data/logic'
+import { undo, usePlanner } from '../data/store'
+import { isStringArray, isWeekStart, PREF_KEYS, usePref } from '../hooks/usePref'
 import { navigate } from '../hooks/useHashRoute'
 import { useToday } from '../hooks/useToday'
-import { PRIORITY_COLOR_TOKEN } from '../theme'
-import { shortDate } from '../utils/format'
 
 interface CalendarPageProps {
-  /** 'YYYY-MM'. 없으면 이번 달 */
-  readonly month?: string
+  readonly view?: CalView
+  readonly date?: string
 }
 
-type FormState = { readonly open: false } | { readonly open: true; readonly task: Task | null }
+const go = (view: CalView, date: string): void => navigate({ page: 'calendar', view, date })
 
-function shiftMonth(month: string, delta: number): string {
-  const [y, m] = month.split('-').map(Number)
-  const total = y * 12 + (m - 1) + delta
-  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`
-}
-
-const goMonth = (month: string): void => navigate({ page: 'calendar', month })
-
-/** 마감이 있는 할일 중 아직 끝나지 않은 것 (지난 마감 먼저, 그다음 가까운 마감 순) */
-function openDeadlines(tasks: readonly Task[]): Task[] {
-  return tasks
-    .filter((t) => isActiveInstance(t) && t.dueDate !== undefined && (t.status === 'todo' || t.status === 'delegated'))
-    .sort((a, b) => a.dueDate!.localeCompare(b.dueDate!))
-}
-
-function DeadlineList({ tasks, today, onOpen }: { tasks: readonly Task[]; today: string; onOpen: (t: Task) => void }) {
-  const { token } = theme.useToken()
-  if (tasks.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="마감 있는 할일 없음" />
-  return (
-    <div>
-      {tasks.map((t, i) => {
-        const days = dDay(t.dueDate!, today)
-        const urgent = days <= 2
-        return (
-          <Flex
-            key={t.id}
-            gap={8}
-            align="flex-start"
-            onClick={() => onOpen(t)}
-            style={{ padding: '8px 0', borderTop: i === 0 ? undefined : `1px solid ${token.colorSplit}`, cursor: 'pointer' }}
-          >
-            <Typography.Text className="num" strong style={{ width: 16, flex: 'none', color: token[PRIORITY_COLOR_TOKEN[t.priority]] }}>
-              {t.priority}
-            </Typography.Text>
-            <Flex vertical style={{ flex: 1, minWidth: 0 }}>
-              <Typography.Text ellipsis>{t.title}</Typography.Text>
-              <Typography.Text type="secondary" className="num" style={{ fontSize: 12 }}>
-                {taskStart(t) === t.dueDate ? shortDate(t.dueDate!) : `${shortDate(taskStart(t))} ~ ${shortDate(t.dueDate!)}`}
-                {t.status === 'delegated' && t.delegatedTo ? ` · ${t.delegatedTo}에게 맡김` : ''}
-              </Typography.Text>
-            </Flex>
-            <Typography.Text
-              className="num"
-              type={days < 0 ? 'danger' : urgent ? 'warning' : 'secondary'}
-              strong={urgent}
-              style={{ flex: 'none', fontSize: 12, lineHeight: '22px' }}
-            >
-              {formatDDay(days)}
-            </Typography.Text>
-          </Flex>
-        )
-      })}
-    </div>
-  )
-}
-
-export default function CalendarPage({ month }: CalendarPageProps) {
+export default function CalendarPage({ view: routeView, date: routeDate }: CalendarPageProps) {
   const data = usePlanner()
   const today = useToday()
-  const current = month ?? today.slice(0, 7)
-  const [year, mon] = current.split('-').map(Number)
+  const { message } = App.useApp()
   const isWide = Grid.useBreakpoint().md ?? true
-  const [form, setForm] = useState<FormState>({ open: false })
+  const view: CalView = routeView ?? (isWide ? 'month' : 'agenda')
+  const date = routeDate ?? today
 
-  const weeks = useMemo(() => monthGrid(year, mon), [year, mon])
-  const deadlines = useMemo(() => openDeadlines(data.tasks), [data.tasks])
-  const events = useMemo(() => data.events.filter((e) => !e.deleted), [data.events])
-  const openTask = (task: Task): void => setForm({ open: true, task })
+  const [hiddenList, setHiddenList] = usePref<string[]>(PREF_KEYS.hiddenCategories, [], isStringArray)
+  const [weekStart, setWeekStart] = usePref<WeekStart>(PREF_KEYS.weekStart, 0, isWeekStart)
+  const [query, setQuery] = useState('')
+  const [drawer, setDrawer] = useState<DrawerState | null>(null)
+  const [keysOpen, setKeysOpen] = useState(false)
+  const searchRef = useRef<InputRef>(null)
+  const [askScope, scopeDialog] = useScopeAsk()
+
+  const hidden = useMemo(() => new Set(hiddenList), [hiddenList])
+  const range = useMemo(() => rangeFor(view, date, weekStart), [view, date, weekStart])
+  const items = useMemo(() => buildItems(data, range.from, range.to, { hidden, query }), [data, range, hidden, query])
+  const counts = useMemo(() => {
+    const all = buildItems(data, range.from, range.to, { hidden: new Set(), query: '' })
+    return all.reduce((m, i) => m.set(i.categoryId ?? NO_CATEGORY, (m.get(i.categoryId ?? NO_CATEGORY) ?? 0) + 1), new Map<string, number>())
+  }, [data, range])
+
+  const onDrop = useCallback(
+    (s: DragState) => {
+      const to = dragPreview(s)
+      if (!to) return
+      const ask = () => askScope('change')
+      if (s.mode === 'create') {
+        setDrawer({ mode: 'create', draft: { kind: 'event', date: to.date, start: formatMinutes(to.start!), end: formatMinutes(to.end!) } })
+      } else if (s.item && s.mode === 'resize') void applyResize(s.item, to, ask)
+      else if (s.item) void applyMove(s.item, to, view === 'month', ask)
+    },
+    [askScope, view],
+  )
+  const drag = useCalendarDrag(onDrop)
+
+  const openItem = (item: CalItem): void => {
+    if (!drag.consumeClick()) setDrawer({ mode: 'view', item })
+  }
+  const createAt = (d: string, allDay = false): void => {
+    if (!drag.consumeClick()) setDrawer({ mode: 'create', draft: { kind: allDay ? 'event' : 'task', date: d, allDay } })
+  }
+  const toggleCategory = (key: string): void =>
+    setHiddenList(hidden.has(key) ? hiddenList.filter((k) => k !== key) : [...hiddenList, key])
+
+  useCalendarKeys({
+    onToday: () => go(view, today),
+    onStep: (dir) => go(view, stepDate(view, date, dir)),
+    onView: (v) => go(v, date),
+    onNew: () => createAt(view === 'month' ? today : date),
+    onSearch: () => searchRef.current?.focus(),
+    onUndo: () => (undo() ? message.success('되돌렸습니다') : message.info('되돌릴 것이 없습니다')),
+    onHelp: () => setKeysOpen(true),
+  })
+
+  const days = view === 'day' ? [date] : Array.from({ length: 7 }, (_, i) => addDays(range.from, i))
+  const dragLabel = drag.drag && drag.drag.mode !== 'create' ? dragPreview(drag.drag) : null
 
   return (
     <>
-      <Flex justify="space-between" align="center" wrap gap={16} style={{ marginBottom: 24 }}>
-        <Typography.Title level={4} style={{ margin: 0 }} className="num">
-          {year}년 {mon}월
-        </Typography.Title>
-        <Flex gap={8} wrap>
-          <Button icon={<LeftOutlined />} aria-label="지난달" onClick={() => goMonth(shiftMonth(current, -1))} />
-          <Button disabled={current === today.slice(0, 7)} onClick={() => goMonth(today.slice(0, 7))}>
-            이번 달
-          </Button>
-          <Button icon={<RightOutlined />} aria-label="다음달" onClick={() => goMonth(shiftMonth(current, 1))} />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setForm({ open: true, task: null })}>
-            장기 할일 추가
-          </Button>
-        </Flex>
-      </Flex>
+      <CalendarToolbar
+        title={titleFor(view, date, weekStart)}
+        view={view}
+        query={query}
+        searchRef={searchRef}
+        weekStart={weekStart}
+        onToday={() => go(view, today)}
+        onStep={(dir) => go(view, stepDate(view, date, dir))}
+        onView={(v) => go(v, date)}
+        onQuery={setQuery}
+        onNew={() => createAt(view === 'month' ? today : date)}
+        onToggleWeekStart={() => setWeekStart(weekStart === 0 ? 1 : 0)}
+        onShowKeys={() => setKeysOpen(true)}
+      />
+      <CategoryBar categories={data.categories} hidden={hidden} counts={counts} onToggle={toggleCategory} />
       <Row gutter={[24, 16]}>
-        <Col xs={24} xl={17}>
-          <Card styles={{ body: { padding: 0 } }}>
-            <MonthGrid
-              weeks={weeks}
-              month={current}
-              today={today}
-              tasks={data.tasks}
-              events={events}
-              compact={!isWide}
-              onOpenDay={(date) => navigate({ page: 'day', date })}
-              onOpenTask={openTask}
-            />
+        <Col xs={24} xl={18}>
+          <Card styles={{ body: { padding: 0 } }} style={{ position: 'relative' }}>
+            {dragLabel && (
+              <div className="num" role="status" style={{ position: 'absolute', top: -30, right: 0, fontSize: 13 }}>
+                옮길 곳: {dragLabel.date}
+                {dragLabel.start !== undefined ? ` ${formatMinutes(dragLabel.start)}` : ''}
+              </div>
+            )}
+            {view === 'month' && (
+              <MonthView
+                weeks={weeksOfMonth(date, weekStart)}
+                month={date.slice(0, 7)}
+                today={today}
+                items={items}
+                categories={data.categories}
+                compact={!isWide}
+                drag={drag}
+                onOpenItem={openItem}
+                onOpenDay={(d) => go('day', d)}
+                onCreate={(d) => createAt(d)}
+              />
+            )}
+            {(view === 'week' || view === 'day') && (
+              <TimeGridView
+                days={days}
+                today={today}
+                items={items}
+                categories={data.categories}
+                drag={drag}
+                onOpenItem={openItem}
+                onOpenDay={(d) => go('day', d)}
+                onCreateAllDay={(d) => createAt(d, true)}
+              />
+            )}
+            {view === 'agenda' && (
+              <AgendaView from={range.from} to={range.to} today={today} items={items} categories={data.categories} onOpenItem={openItem} />
+            )}
           </Card>
         </Col>
-        <Col xs={24} xl={7}>
-          <Card title="마감 일정" extra={deadlines.length > 0 && <Typography.Text type="secondary" className="num">{deadlines.length}</Typography.Text>}>
-            <DeadlineList tasks={deadlines} today={today} onOpen={openTask} />
-          </Card>
+        <Col xs={24} xl={6}>
+          <DeadlineCard tasks={data.tasks} today={today} onOpen={(item) => setDrawer({ mode: 'view', item })} />
         </Col>
       </Row>
-      <TaskForm open={form.open} task={form.open ? form.task : null} defaultDate={today} onClose={() => setForm({ open: false })} />
+      <ItemDrawer state={drawer} today={today} onChange={setDrawer} onOpenDay={(d) => navigate({ page: 'day', date: d })} />
+      <Modal open={keysOpen} title="달력 단축키" footer={null} onCancel={() => setKeysOpen(false)} width={420}>
+        {SHORTCUT_LINES.map((line) => (
+          <Typography.Paragraph key={line} style={{ marginBottom: 4 }}>
+            {line}
+          </Typography.Paragraph>
+        ))}
+      </Modal>
+      {scopeDialog}
     </>
   )
 }

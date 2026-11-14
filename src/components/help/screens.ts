@@ -67,7 +67,7 @@ const DAY_NOTES: readonly ScreenNote[] = [
   },
   {
     title: '빠른 추가',
-    desc: 'A, B, C를 고르고 할일을 쓴 뒤 Enter. "3시 상담", "10시반~12시 수업"처럼 쓰면 시간도 붙어서 일정표에 같이 나옵니다.',
+    desc: 'A, B, C와 분류를 고르고 할일을 쓴 뒤 Enter. "3시 상담", "10시반~12시 수업"처럼 쓰면 시간도 붙어서 일정표에 같이 나옵니다. 고른 분류는 다음에도 그대로 남습니다.',
     find: (root) => root.querySelector('[aria-label="새 할일"]')?.closest('.ant-flex') ?? null,
   },
   {
@@ -92,7 +92,7 @@ const DAY_NOTES: readonly ScreenNote[] = [
   },
   {
     title: '일정표',
-    desc: '빈 시간을 누르면 그 시간에 일정을 넣습니다. 파란 칸은 일정, 흰 칸에 색 테두리는 시간이 붙은 할일입니다. 오늘 화면에는 지금 시각이 빨간 줄로 보입니다.',
+    desc: '빈 시간을 누르면 그 시간에 일정을 넣습니다. 색 바탕 칸은 일정(줄 색이 분류), 흰 칸에 색 테두리는 시간이 붙은 할일입니다. 오늘 화면에는 지금 시각이 빨간 줄로 보입니다.',
     find: byCard('일정'),
   },
   { title: '메모', desc: '그날 있었던 일을 적어 둡니다. 쓰는 대로 자동 저장됩니다.', find: byCard('메모') },
@@ -107,16 +107,28 @@ const DAY_NOTES: readonly ScreenNote[] = [
 const CALENDAR_NOTES: readonly ScreenNote[] = [
   ...NAV_NOTES,
   {
-    title: '달 옮기기',
-    desc: '지난달, 이번 달, 다음달로 넘깁니다.',
-    find: (root) => [byLabel('지난달')(root), byLabel('다음달')(root)].filter((el): el is Element => el !== null),
+    title: '기간 옮기기',
+    desc: '오늘로 돌아오거나 앞뒤 달(주, 날)로 넘깁니다. 키보드 T, ←, → 로도 됩니다.',
+    find: (root) => [byButton('오늘')(root, ''), byLabel('이전')(root), byLabel('다음')(root)].flat().filter((el): el is Element => el !== null),
   },
-  { title: '장기 할일 추가', desc: '하루 화면의 같은 버튼과 똑같습니다.', find: byButton('장기 할일 추가') },
-  { title: '날짜 칸', desc: '칸을 누르면 그날 하루 화면이 열립니다. 점 색은 할일의 우선순위입니다.', find: (root, today) => byLabel(today)(root) },
+  { title: '검색', desc: '쓰는 대로 제목이 맞는 할일·일정만 남습니다. / 키를 누르면 바로 씁니다.', find: byLabel('검색') },
+  { title: '보기 바꾸기', desc: '월, 주, 일, 목록으로 바꿉니다. 키보드 M, W, D, A 로도 됩니다.', find: byLabel('보기') },
+  { title: '추가', desc: '할일이나 일정을 새로 만듭니다. "내일 4시 상담 30분"처럼 한 줄로 쓰고 칸 채우기를 눌러도 됩니다.', find: byButton('추가') },
+  { title: '더보기 메뉴', desc: '주 시작 요일(일요일·월요일)을 바꾸고 단축키를 봅니다.', find: byLabel('더보기') },
   {
-    title: '장기 할일 막대',
-    desc: '시작일부터 마감일까지 막대로 이어집니다. 누르면 수정 창이 열립니다.',
-    find: (root) => root.querySelector('button[title*="(~"]'),
+    title: '분류 목록',
+    desc: '체크를 끄면 그 분류의 할일·일정이 달력에서 숨습니다. 분류 관리에서 분류를 만들고 색과 이름을 바꿉니다.',
+    find: byLabel('분류 목록'),
+  },
+  {
+    title: '날짜 칸',
+    desc: '빈 곳을 누르면 그날로 새로 만들고, 날짜 숫자를 누르면 그날 하루 보기로 갑니다.',
+    find: (root, today) => byLabel(today)(root),
+  },
+  {
+    title: '할일·일정',
+    desc: '왼쪽 줄 색은 분류, 앞 글자는 할일의 우선순위입니다. 누르면 오른쪽에 자세히 나오고, 끌어서 다른 날(주·일 보기에서는 다른 시각)로 옮깁니다.',
+    find: (root) => root.querySelector('[data-item-key^="task:"]') ?? root.querySelector('[data-item-key]'),
   },
   {
     title: '마감 일정',

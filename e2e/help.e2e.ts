@@ -51,7 +51,12 @@ test('설명서를 켠 동안만 예시 할일로 화면을 채워 설명하고,
 
   await page.getByRole('menuitem', { name: '달력' }).click()
   await page.getByRole('button', { name: '사용 설명서' }).first().click()
-  await expect(page.getByRole('button', { name: /\. 장기 할일 막대$/ })).toBeVisible()
+  // 하루 화면에서 아래로 내린 채 넘어와 위쪽 번호는 화면 밖일 수 있다. '다음'으로 넘겨서 찾는다
+  for (let i = 0; i < 10 && !(await page.getByRole('dialog', { name: '분류 목록' }).isVisible()); i++) {
+    await bar.getByRole('button', { name: '다음' }).click()
+  }
+  await expect(page.getByRole('dialog', { name: '분류 목록' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /\. 할일·일정$/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /\. 마감 일정$/ })).toBeVisible()
   await page.keyboard.press('Escape')
   expect(await page.evaluate(() => localStorage.getItem('planner:data'))).toBe(saved)

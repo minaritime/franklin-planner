@@ -3,6 +3,8 @@ import type { Goal, PlannerData, Task } from '../../data/types'
 import type { Route } from '../../hooks/useHashRoute'
 
 const GOAL_ID = 'sample-goal'
+const WORK = 'sample-cat-work'
+const ME = 'sample-cat-me'
 
 function task(id: string, fields: Partial<Task> & Pick<Task, 'title' | 'priority' | 'order' | 'date'>): Task {
   return { id: `sample-${id}`, note: '', status: 'todo', updatedAt: 0, ...fields }
@@ -17,7 +19,7 @@ export function buildSampleData(day: string): PlannerData {
   const tomorrow = addDays(day, 1)
 
   const tasks: Task[] = [
-    task('a1', { title: '학부모 상담', priority: 'A', order: 1, date: day, startTime: '15:00', endTime: '16:00' }),
+    task('a1', { title: '학부모 상담', priority: 'A', order: 1, date: day, startTime: '15:00', endTime: '16:00', categoryId: WORK }),
     task('a2', { title: '중간고사 문제 검토', priority: 'A', order: 2, date: day, status: 'done' }),
     task('b1', { title: '체험 수업 안내문 만들기', priority: 'B', order: 1, date: day, goalId: GOAL_ID, dueDate: addDays(day, 2) }),
     task('b2', { title: '교재 주문', priority: 'B', order: 2, date: day, status: 'delegated', delegatedTo: '김선생' }),
@@ -27,6 +29,7 @@ export function buildSampleData(day: string): PlannerData {
     task('late', { title: '성적표 정리', priority: 'B', order: 1, date: yesterday }),
     task('long', {
       title: '기말 문제 만들기',
+      categoryId: WORK,
       priority: 'A',
       order: 1,
       date: addDays(day, -2),
@@ -53,17 +56,35 @@ export function buildSampleData(day: string): PlannerData {
     version: 1,
     tasks,
     events: [
-      { id: 'sample-e1', date: day, start: '10:00', end: '12:00', title: '오전 수업', updatedAt: 0 },
-      { id: 'sample-e2', date: day, start: '13:00', end: '14:00', title: '점심 약속', updatedAt: 0 },
+      { id: 'sample-e1', date: day, start: '10:00', end: '12:00', title: '오전 수업', categoryId: WORK, updatedAt: 0 },
+      { id: 'sample-e2', date: day, start: '13:00', end: '14:00', title: '점심 약속', categoryId: ME, updatedAt: 0 },
+      {
+        id: 'sample-e3',
+        date: addDays(day, -7),
+        start: '18:00',
+        end: '19:00',
+        title: '선생님 회의',
+        categoryId: WORK,
+        repeat: { freq: 'weekly' },
+        updatedAt: 0,
+      },
     ],
     notes: [{ date: day, text: '상담 때 수학 진도 질문이 많았음', updatedAt: 0 }],
     goals,
+    categories: [
+      { id: WORK, name: '학원', color: 'blue', order: 1, updatedAt: 0 },
+      { id: ME, name: '개인', color: 'green', order: 2, updatedAt: 0 },
+    ],
   }
 }
 
 /** 예시를 어느 날 기준으로 만들지. 지금 보고 있는 날(달)에 맞춰야 화면에 예시가 보인다 */
 export function sampleAnchor(route: Route, today: string): string {
   if (route.page === 'day') return route.date
-  if (route.page === 'calendar' && route.month && route.month !== today.slice(0, 7)) return `${route.month}-15`
+  if (route.page === 'calendar' && route.date) {
+    const month = route.date.slice(0, 7)
+    if (route.view !== 'month') return route.date
+    return month === today.slice(0, 7) ? today : `${month}-15`
+  }
   return today
 }

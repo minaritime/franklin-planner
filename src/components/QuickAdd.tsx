@@ -1,10 +1,12 @@
 import { ClockCircleOutlined } from '@ant-design/icons'
-import { Button, Flex, Input, Segmented, Tag, type InputRef } from 'antd'
+import { Button, Flex, Grid, Input, Segmented, Tag, type InputRef } from 'antd'
 import { useRef, useState } from 'react'
 import { addTask } from '../data/actions'
 import { parseTimedTitle } from '../data/timeParse'
 import type { Priority } from '../data/types'
 import { PRIORITIES } from '../data/types'
+import { isOptionalString, PREF_KEYS, usePref } from '../hooks/usePref'
+import CategorySelect from './calendar/CategorySelect'
 
 interface QuickAddProps {
   readonly date: string
@@ -18,6 +20,9 @@ export default function QuickAdd({ date }: QuickAddProps) {
   const [priority, setPriority] = useState<Priority>('B')
   const [text, setText] = useState('')
   const [ignoreTime, setIgnoreTime] = useState(false)
+  // 마지막에 고른 분류를 기억해 다음 할일에도 그대로 쓴다
+  const [categoryId, setCategoryId] = usePref<string | null>(PREF_KEYS.lastCategory, null, isOptionalString)
+  const isWide = Grid.useBreakpoint().md ?? true
   const inputRef = useRef<InputRef>(null)
 
   const parsed = parseTimedTitle(text, DEFAULT_MINUTES)
@@ -30,6 +35,7 @@ export default function QuickAdd({ date }: QuickAddProps) {
       title: useTime ? parsed.title || trimmed : trimmed,
       note: '',
       priority,
+      categoryId: categoryId ?? undefined,
       date,
       startTime: useTime ? (parsed.start ?? undefined) : undefined,
       endTime: useTime ? (parsed.end ?? undefined) : undefined,
@@ -47,6 +53,12 @@ export default function QuickAdd({ date }: QuickAddProps) {
           onChange={setPriority}
           options={PRIORITIES.map((p) => ({ value: p, label: p }))}
           aria-label="우선순위"
+        />
+        <CategorySelect
+          value={categoryId ?? undefined}
+          onChange={(v) => setCategoryId(v ?? null)}
+          placeholder="분류"
+          style={{ width: isWide ? 120 : 96, flex: 'none' }}
         />
         <Input
           ref={inputRef}

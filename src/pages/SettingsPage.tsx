@@ -2,7 +2,7 @@ import { DownloadOutlined, UploadOutlined } from '@ant-design/icons'
 import { App, Button, Card, Flex, Typography, Upload } from 'antd'
 import SyncCard from '../components/SyncCard'
 import { mergeData, todayString } from '../data/logic'
-import { getData, parsePlannerData, setData } from '../data/store'
+import { clearUndo, getData, parsePlannerData, setData } from '../data/store'
 
 function exportJson(): void {
   const blob = new Blob([JSON.stringify(getData(), null, 2)], { type: 'application/json' })
@@ -25,6 +25,7 @@ export default function SettingsPage() {
         return
       }
       setData((d) => mergeData(d, parsed))
+      clearUndo()
       message.success('가져와서 합쳤습니다')
     } catch {
       message.error('파일을 읽지 못했습니다')

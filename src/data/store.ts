@@ -1,5 +1,6 @@
 import { createContext, useContext, useSyncExternalStore } from 'react'
 import { EMPTY_DATA, type PlannerData } from './types'
+import { restoreSnapshot } from './undo'
 import { parsePlannerData } from './validate'
 
 export { parsePlannerData }
@@ -67,6 +68,34 @@ export function setData(update: (prev: PlannerData) => PlannerData): void {
   state = next
   persist(next)
   notify()
+}
+
+const UNDO_LIMIT = 50
+const undoStack: { readonly before: PlannerData; readonly after: PlannerData }[] = []
+
+/**
+ * 사용자가 한 일로 바꿀 때 쓴다. 바로 앞 상태를 기억해 두어 Ctrl+Z 로 되돌릴 수 있다.
+ * 동기화로 들어온 변경은 setData 를 그대로 써서 되돌리기 대상에 넣지 않는다.
+ */
+export function commit(update: (prev: PlannerData) => PlannerData): void {
+  const before = state
+  setData(update)
+  if (state === before) return
+  undoStack.push({ before, after: state })
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift()
+}
+
+/** 되돌린 게 있으면 true */
+export function undo(): boolean {
+  const last = undoStack.pop()
+  if (!last) return false
+  setData((current) => restoreSnapshot(current, last.before, last.after, Date.now()))
+  return true
+}
+
+/** 파일 가져오기·기기 비우기처럼 통째로 바뀌면 이전 되돌리기는 의미가 없다 */
+export function clearUndo(): void {
+  undoStack.length = 0
 }
 
 export function subscribe(listener: Listener): () => void {

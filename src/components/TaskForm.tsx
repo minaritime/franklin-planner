@@ -1,11 +1,8 @@
-import { DatePicker, Form, Input, Modal, Segmented, Select, TimePicker } from 'antd'
-import dayjs from 'dayjs'
+import { Form, Modal } from 'antd'
 import { useEffect } from 'react'
-import { addTask, editTask, type TaskInput } from '../data/actions'
-import { liveGoals } from '../data/logic'
-import { usePlanner } from '../data/store'
-import type { Priority, Task } from '../data/types'
-import { fromDayjs, toDayjs } from '../utils/format'
+import { addTask, editTask } from '../data/actions'
+import type { Task } from '../data/types'
+import TaskFormFields, { taskInitialValues, toTaskInput, type TaskFormValues } from './form/TaskFormFields'
 
 interface TaskFormProps {
   readonly open: boolean
@@ -15,55 +12,16 @@ interface TaskFormProps {
   readonly onClose: () => void
 }
 
-interface FormValues {
-  title: string
-  priority: Priority
-  date: dayjs.Dayjs
-  dueDate?: dayjs.Dayjs | null
-  time?: [dayjs.Dayjs, dayjs.Dayjs] | null
-  goalId?: string
-  note?: string
-}
-
-const TIME_FMT = 'HH:mm'
-
-export const PRIORITY_OPTIONS = [
-  { value: 'A', label: 'A 반드시' },
-  { value: 'B', label: 'B 중요' },
-  { value: 'C', label: 'C 여유되면' },
-]
-
+/** 하루 화면의 할일 창 (장기 할일 추가·할일 수정) */
 export default function TaskForm({ open, task, defaultDate, onClose }: TaskFormProps) {
-  const [form] = Form.useForm<FormValues>()
-  const { goals } = usePlanner()
-  const date = Form.useWatch('date', form)
-  const dueDate = Form.useWatch('dueDate', form)
+  const [form] = Form.useForm<TaskFormValues>()
 
   useEffect(() => {
-    if (!open) return
-    form.setFieldsValue({
-      title: task?.title ?? '',
-      priority: task?.priority ?? 'B',
-      date: toDayjs(task?.date ?? defaultDate),
-      dueDate: toDayjs(task?.dueDate) ?? null,
-      time: task?.startTime && task.endTime ? [dayjs(task.startTime, TIME_FMT), dayjs(task.endTime, TIME_FMT)] : null,
-      goalId: task?.goalId,
-      note: task?.note ?? '',
-    })
+    if (open) form.setFieldsValue(taskInitialValues(task, { date: defaultDate }))
   }, [open, task, defaultDate, form])
 
   async function submit(): Promise<void> {
-    const v = await form.validateFields()
-    const input: TaskInput = {
-      title: v.title.trim(),
-      note: (v.note ?? '').trim(),
-      priority: v.priority,
-      date: fromDayjs(v.date) ?? defaultDate,
-      dueDate: fromDayjs(v.dueDate),
-      startTime: v.time ? v.time[0].format(TIME_FMT) : undefined,
-      endTime: v.time ? v.time[1].format(TIME_FMT) : undefined,
-      goalId: v.goalId,
-    }
+    const input = toTaskInput(await form.validateFields(), defaultDate)
     if (task) editTask(task.id, input)
     else addTask(input)
     onClose()
@@ -81,73 +39,7 @@ export default function TaskForm({ open, task, defaultDate, onClose }: TaskFormP
       width={480}
     >
       <Form form={form} layout="vertical" requiredMark={false} style={{ marginTop: 16 }}>
-        <Form.Item name="title" label="할일" rules={[{ required: true, whitespace: true, message: '할일을 적어주세요' }]}>
-          <Input
-            autoFocus
-            maxLength={200}
-            onPressEnter={(e) => {
-              if (!e.nativeEvent.isComposing) void submit()
-            }}
-          />
-        </Form.Item>
-        <Form.Item name="priority" label="우선순위">
-          <Segmented block options={PRIORITY_OPTIONS} />
-        </Form.Item>
-        <div style={{ display: 'flex', gap: 16 }}>
-          <Form.Item name="date" label={dueDate ? '시작일' : '날짜'} style={{ flex: 1 }} rules={[{ required: true, message: '날짜를 골라주세요' }]}>
-            <DatePicker allowClear={false} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item
-            name="dueDate"
-            label="마감일"
-            style={{ flex: 1 }}
-            rules={[
-              { required: task === null, message: '마감일을 골라주세요' },
-              {
-                validator: (_, value: dayjs.Dayjs | null) =>
-                  !value || !date || !value.isBefore(date, 'day')
-                    ? Promise.resolve()
-                    : Promise.reject(new Error('하는 날보다 앞설 수 없습니다')),
-              },
-            ]}
-          >
-            <DatePicker
-              placeholder="없음"
-              style={{ width: '100%' }}
-              disabledDate={(d) => (date ? d.isBefore(date, 'day') : false)}
-            />
-          </Form.Item>
-        </div>
-        <Form.Item
-          name="time"
-          label="시간"
-          rules={[
-            {
-              validator: (_, v: FormValues['time']) =>
-                !v || v[1].isAfter(v[0]) ? Promise.resolve() : Promise.reject(new Error('끝나는 시간이 더 늦어야 합니다')),
-            },
-          ]}
-        >
-          <TimePicker.RangePicker
-            format={TIME_FMT}
-            minuteStep={10}
-            needConfirm={false}
-            placeholder={['시작', '끝']}
-            style={{ width: '100%' }}
-          />
-        </Form.Item>
-        <Form.Item name="goalId" label="목표">
-          <Select
-            allowClear
-            placeholder="없음"
-            options={liveGoals(goals)
-              .filter((g) => g.kind === 'goal')
-              .map((g) => ({ value: g.id, label: g.title }))}
-          />
-        </Form.Item>
-        <Form.Item name="note" label="메모" style={{ marginBottom: 0 }}>
-          <Input.TextArea autoSize={{ minRows: 2, maxRows: 6 }} maxLength={2000} />
-        </Form.Item>
+        <TaskFormFields form={form} requireDue={task === null} onSubmit={() => void submit()} />
       </Form>
     </Modal>
   )

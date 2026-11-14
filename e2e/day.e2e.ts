@@ -43,9 +43,9 @@ test('빠른 추가로 할일을 넣고 완료 표시한 뒤 다른 날로 미�
 
 test('일정을 추가하고 메모가 새로고침 뒤에도 남는다', async ({ page }) => {
   await page.getByRole('button', { name: '일정 추가' }).first().click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('일정').fill('수업')
-  await dialog.getByRole('button', { name: '저장' }).click()
+  const drawer = page.locator('.ant-drawer-open')
+  await drawer.getByLabel('제목').fill('수업')
+  await drawer.getByRole('button', { name: '저장' }).click()
   await expect(page.getByRole('button', { name: /수업/ })).toBeVisible()
 
   await page.getByRole('textbox', { name: '메모' }).fill('잊지 말 것')
@@ -62,17 +62,25 @@ test('장기 할일을 만들면 달력에 막대로 보이고 눌러서 고칠 
   await dialog.getByRole('button', { name: '저장' }).click()
   await expect(dialog.getByText('마감일을 골라주세요')).toBeVisible()
 
-  await dialog.getByLabel('마감일').click()
-  await page.locator('.ant-picker-dropdown:visible .ant-picker-cell-in-view.ant-picker-cell-today + td').click()
+  // 달력 칸 대신 날짜를 직접 쓴다 (토요일이면 '오늘 다음 칸'이 다음 줄로 넘어가서)
+  const tomorrow = await page.evaluate(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
+  await dialog.getByLabel('마감일').fill(tomorrow)
+  await dialog.getByLabel('마감일').press('Enter')
   await dialog.getByRole('button', { name: '저장' }).click()
   await expect(dialog).toBeHidden()
 
   await page.getByRole('menuitem', { name: '달력' }).click()
   const bar = page.getByRole('button', { name: /발표 준비/ })
-  await expect(bar).toBeVisible()
+  await expect(bar.first()).toBeVisible()
   await expect(page.getByText('D-1')).toBeVisible()
-  await bar.click()
-  await expect(page.getByRole('dialog').getByLabel('할일')).toHaveValue('발표 준비')
+  await bar.first().click()
+  const drawer = page.locator('.ant-drawer-open')
+  await drawer.getByRole('button', { name: '수정' }).click()
+  await expect(drawer.getByRole('textbox', { name: '할일' })).toHaveValue('발표 준비')
 })
 
 test('메모를 쓰자마자 다른 날로 넘어가도 저장된다', async ({ page }) => {

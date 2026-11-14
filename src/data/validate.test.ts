@@ -27,4 +27,39 @@ describe('parsePlannerData', () => {
     expect(parsed?.notes).toHaveLength(1)
     expect(parsed?.goals.map((g) => g.id)).toEqual(['g'])
   })
+
+  it('treats missing categories as empty (data saved before categories existed)', () => {
+    expect(parsePlannerData({ version: 1, tasks: [], events: [], notes: [], goals: [] })?.categories).toEqual([])
+  })
+
+  it('keeps valid categories and drops broken ones', () => {
+    const parsed = parsePlannerData({
+      version: 1,
+      tasks: [{ ...goodTask, categoryId: 'c1' }, { ...goodTask, id: 'bad-cat', categoryId: 3 }],
+      events: [],
+      notes: [],
+      goals: [],
+      categories: [
+        { id: 'c1', name: '학원', color: 'blue', order: 1, updatedAt: 1 },
+        { id: 'c2', name: '개인', color: 'pink-ish', order: 2, updatedAt: 1 },
+        { id: 'c3', name: '', color: 'green', order: 3, updatedAt: 1 },
+      ],
+    })
+    expect(parsed?.categories.map((c) => c.id)).toEqual(['c1'])
+    expect(parsed?.tasks.map((t) => t.id)).toEqual(['t'])
+  })
+
+  it('accepts the richer event fields and rejects broken ones', () => {
+    const base = { id: 'e', date: '2026-11-11', start: '09:00', end: '10:00', title: '수업', updatedAt: 1 }
+    const events = [
+      { ...base, endDate: '2026-11-13', allDay: true, place: '본관', note: '메모', categoryId: 'c1' },
+      { ...base, id: 'rep', repeat: { freq: 'weekly', weekdays: [1, 3], until: '2026-12-31' }, skipDates: ['2026-11-18'] },
+      { ...base, id: 'bad-freq', repeat: { freq: 'yearly' } },
+      { ...base, id: 'bad-day', repeat: { freq: 'weekly', weekdays: [7] } },
+      { ...base, id: 'bad-end', endDate: '2026-11-10' },
+      { ...base, id: 'bad-skip', skipDates: ['11/18'] },
+    ]
+    const parsed = parsePlannerData({ version: 1, tasks: [], events, notes: [], goals: [] })
+    expect(parsed?.events.map((e) => e.id)).toEqual(['e', 'rep'])
+  })
 })

@@ -13,6 +13,8 @@ export interface TimelineBlock {
   readonly title: string
   readonly priority?: Priority
   readonly finished?: boolean
+  /** 일정의 분류 색 */
+  readonly lineColor?: string
 }
 
 interface TimelineProps {
@@ -50,7 +52,7 @@ export default function Timeline({ isToday, blocks, onOpenBlock, onOpenEmpty }: 
   /** 일정은 파란 바탕, 할일은 우선순위 색 테두리의 흰 바탕으로 구분한다 */
   const blockStyle = (block: TimelineBlock): CSSProperties => {
     if (block.kind === 'event') {
-      return { background: token.colorPrimaryBg, borderInlineStart: `2px solid ${token.colorPrimary}` }
+      return { background: token.colorPrimaryBg, borderInlineStart: `2px solid ${block.lineColor ?? token.colorPrimary}` }
     }
     const color = block.finished ? token.colorBorder : token[PRIORITY_COLOR_TOKEN[block.priority ?? 'B']]
     return {

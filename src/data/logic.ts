@@ -186,5 +186,6 @@ export function mergeData(local: PlannerData, remote: PlannerData): PlannerData 
     events: mergeBy(local.events, remote.events, (e) => e.id),
     notes: mergeBy(local.notes, remote.notes, (n) => n.date),
     goals: mergeBy(local.goals, remote.goals, (g) => g.id),
+    categories: mergeBy(local.categories, remote.categories, (c) => c.id),
   }
 }

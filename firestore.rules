@@ -7,7 +7,7 @@ service cloud.firestore {
     match /users/{uid}/{collection}/{itemId} {
       allow read, write: if request.auth != null
         && request.auth.uid == uid
-        && collection in ['tasks', 'events', 'notes', 'goals'];
+        && collection in ['tasks', 'events', 'notes', 'goals', 'categories'];
     }
   }
 }

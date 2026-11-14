@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { occursOn } from '../../data/recurrence'
 import { overdueTasks, periodTasksOn, tasksForDay } from '../../data/logic'
 import { buildSampleData, sampleAnchor } from './sampleData'
 
@@ -23,7 +24,8 @@ describe('buildSampleData', () => {
   })
 
   it('그날 일정·메모·목표·가치가 있다', () => {
-    expect(data.events.every((e) => e.date === DAY)).toBe(true)
+    // 반복 일정은 앞에서 시작해도 그날 한 번 나오면 된다
+    expect(data.events.every((e) => occursOn(e, DAY))).toBe(true)
     expect(data.notes[0].date).toBe(DAY)
     expect(new Set(data.goals.map((g) => g.kind))).toEqual(new Set(['goal', 'value']))
   })
@@ -34,8 +36,9 @@ describe('sampleAnchor', () => {
     expect(sampleAnchor({ page: 'day', date: '2026-10-01' }, DAY)).toBe('2026-10-01')
   })
   it('다른 달 달력은 그 달 15일 기준, 이번 달이면 오늘', () => {
-    expect(sampleAnchor({ page: 'calendar', month: '2027-01' }, DAY)).toBe('2027-01-15')
-    expect(sampleAnchor({ page: 'calendar', month: '2026-11' }, DAY)).toBe(DAY)
+    expect(sampleAnchor({ page: 'calendar', view: 'month', date: '2027-01-01' }, DAY)).toBe('2027-01-15')
+    expect(sampleAnchor({ page: 'calendar', view: 'month', date: '2026-11-01' }, DAY)).toBe(DAY)
+    expect(sampleAnchor({ page: 'calendar', view: 'week', date: '2027-02-03' }, DAY)).toBe('2027-02-03')
     expect(sampleAnchor({ page: 'calendar' }, DAY)).toBe(DAY)
   })
   it('목표·설정은 오늘 기준', () => {

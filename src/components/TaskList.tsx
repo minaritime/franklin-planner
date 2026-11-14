@@ -16,7 +16,7 @@ import type { Goal, Priority, Task } from '../data/types'
 import { PRIORITIES } from '../data/types'
 import TaskRow from './TaskRow'
 import type { TaskAction } from './TaskActionModal'
-import { PRIORITY_OPTIONS } from './TaskForm'
+import { PRIORITY_OPTIONS } from './form/TaskFormFields'
 
 interface TaskListProps {
   readonly tasks: readonly Task[]

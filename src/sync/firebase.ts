@@ -69,7 +69,7 @@ export async function signOutUser(): Promise<void> {
   await signOut(need().auth)
 }
 
-/** users/{uid}/{tasks|events|notes|goals}/{id} 에 항목 하나씩 저장한다 */
+/** users/{uid}/{tasks|events|notes|goals|categories}/{id} 에 항목 하나씩 저장한다 */
 export function createFirestoreAdapter(uid: string): RemoteAdapter {
   const { db } = need()
   return {

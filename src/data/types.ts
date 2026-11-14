@@ -19,6 +19,8 @@ export interface Task {
   readonly startTime?: string
   readonly endTime?: string
   readonly goalId?: string
+  /** 사용자가 만든 분류. 없거나 지운 분류면 '분류 없음' */
+  readonly categoryId?: string
   readonly delegatedTo?: string
   /** 미룬 날짜 (status 가 forwarded 일 때) */
   readonly forwardedTo?: string
@@ -28,12 +30,59 @@ export interface Task {
   readonly deleted?: boolean
 }
 
+export type RepeatFreq = 'daily' | 'weekly' | 'biweekly' | 'monthly'
+
+export interface Repeat {
+  readonly freq: RepeatFreq
+  /** 매주·격주일 때 요일 (0=일 ~ 6=토). 없으면 첫 날의 요일 */
+  readonly weekdays?: readonly number[]
+  /** 이 날까지만 반복 (포함) */
+  readonly until?: string
+}
+
 export interface PlanEvent {
   readonly id: string
+  /** 첫 날. 반복 일정이면 반복이 시작하는 날 */
   readonly date: string
+  /** 여러 날 일정의 끝 날 (포함). 없으면 하루짜리 */
+  readonly endDate?: string
+  /** 종일이면 start·end 는 무시한다 */
+  readonly allDay?: boolean
   readonly start: string
   readonly end: string
   readonly title: string
+  readonly categoryId?: string
+  readonly place?: string
+  readonly note?: string
+  readonly repeat?: Repeat
+  /** 반복 중 빼거나 따로 떼어 낸 날 */
+  readonly skipDates?: readonly string[]
+  readonly updatedAt: number
+  readonly deleted?: boolean
+}
+
+/** antd 기본 색 이름. 화면에서는 테마 토큰(blue6 등)으로 바꿔 그린다 */
+export const CATEGORY_COLORS = [
+  'blue',
+  'green',
+  'orange',
+  'purple',
+  'cyan',
+  'magenta',
+  'red',
+  'gold',
+  'geekblue',
+  'lime',
+  'volcano',
+] as const
+
+export type CategoryColor = (typeof CATEGORY_COLORS)[number]
+
+export interface Category {
+  readonly id: string
+  readonly name: string
+  readonly color: CategoryColor
+  readonly order: number
   readonly updatedAt: number
   readonly deleted?: boolean
 }
@@ -63,6 +112,7 @@ export interface PlannerData {
   readonly events: readonly PlanEvent[]
   readonly notes: readonly DayNote[]
   readonly goals: readonly Goal[]
+  readonly categories: readonly Category[]
 }
 
 export const EMPTY_DATA: PlannerData = {
@@ -71,6 +121,7 @@ export const EMPTY_DATA: PlannerData = {
   events: [],
   notes: [],
   goals: [],
+  categories: [],
 }
 
 export const PRIORITIES: readonly Priority[] = ['A', 'B', 'C']

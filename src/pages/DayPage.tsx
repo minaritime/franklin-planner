@@ -1,15 +1,18 @@
 import { LeftOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Col, DatePicker, Flex, Grid, Row, Typography } from 'antd'
+import { Alert, Button, Card, Col, DatePicker, Flex, Grid, Row, theme, Typography } from 'antd'
 import dayjs from 'dayjs'
 import { useMemo, useState } from 'react'
 import DayMemo from '../components/DayMemo'
 import QuickAdd from '../components/QuickAdd'
-import EventModal, { type EventDraft } from '../components/EventModal'
+import ItemChip from '../components/calendar/ItemChip'
+import ItemDrawer, { type DrawerState } from '../components/calendar/ItemDrawer'
+import { categoryColor, chipColors } from '../components/calendar/colors'
 import TaskActionModal, { type TaskAction } from '../components/TaskActionModal'
 import TaskForm from '../components/TaskForm'
 import TaskList from '../components/TaskList'
 import Timeline, { type TimelineBlock } from '../components/Timeline'
 import { bringOverdue } from '../data/actions'
+import { buildItems } from '../data/calendarItems'
 import { addDays, carriedLongTasks, dDay, overdueTasks, tasksForDay } from '../data/logic'
 import { usePlanner } from '../data/store'
 import type { Task } from '../data/types'
@@ -24,6 +27,12 @@ interface DayPageProps {
 type FormState = { readonly open: false } | { readonly open: true; readonly task: Task | null }
 
 const goTo = (date: string): void => navigate({ page: 'day', date })
+
+const hh = (hour: number): string => `${String(Math.min(hour, 23)).padStart(2, '0')}:00`
+const newEvent = (date: string, hour: number): DrawerState => ({
+  mode: 'create',
+  draft: { kind: 'event', date, start: hh(hour), end: hour >= 23 ? '23:59' : hh(hour + 1) },
+})
 
 function relativeDay(days: number): string {
   if (days === 1) return '내일'
@@ -87,15 +96,28 @@ export default function DayPage({ date }: DayPageProps) {
   const today = useToday()
   const [form, setForm] = useState<FormState>({ open: false })
   const [action, setAction] = useState<TaskAction | null>(null)
-  const [eventDraft, setEventDraft] = useState<EventDraft | null>(null)
+  const [drawer, setDrawer] = useState<DrawerState | null>(null)
+  const { token } = theme.useToken()
 
   const dayTasks = useMemo(() => tasksForDay(data.tasks, date), [data.tasks, date])
   const overdue = useMemo(() => (date === today ? overdueTasks(data.tasks, today) : []), [data.tasks, date, today])
   const carried = useMemo(() => carriedLongTasks(data.tasks, date), [data.tasks, date])
+  // 반복·여러 날 일정까지 펼친 그날 일정 (달력에서 분류를 꺼도 하루 화면에서는 다 보인다)
+  const eventItems = useMemo(
+    () => buildItems(data, date, date, { hidden: new Set(), query: '' }).filter((i) => i.kind === 'event'),
+    [data, date],
+  )
   const blocks = useMemo<TimelineBlock[]>(() => {
-    const eventBlocks = data.events
-      .filter((e) => e.date === date && !e.deleted)
-      .map((e) => ({ id: e.id, kind: 'event' as const, start: e.start, end: e.end, title: e.title }))
+    const eventBlocks = eventItems
+      .filter((i) => !i.allDay && i.start && i.end)
+      .map((i) => ({
+        id: i.key,
+        kind: 'event' as const,
+        start: i.start!,
+        end: i.end!,
+        title: i.title,
+        lineColor: chipColors(token, categoryColor(data.categories, i.categoryId)).line,
+      }))
     const taskBlocks = dayTasks
       .filter((t) => t.startTime && t.endTime && t.status !== 'forwarded' && t.status !== 'cancelled')
       .map((t) => ({
@@ -108,7 +130,7 @@ export default function DayPage({ date }: DayPageProps) {
         finished: t.status !== 'todo',
       }))
     return [...eventBlocks, ...taskBlocks]
-  }, [data.events, dayTasks, date])
+  }, [eventItems, dayTasks, data.categories, token])
 
   const openBlock = (block: TimelineBlock): void => {
     if (block.kind === 'task') {
@@ -116,9 +138,10 @@ export default function DayPage({ date }: DayPageProps) {
       if (task) setForm({ open: true, task })
       return
     }
-    const event = data.events.find((e) => e.id === block.id)
-    if (event) setEventDraft({ event })
+    const item = eventItems.find((i) => i.key === block.id)
+    if (item) setDrawer({ mode: 'view', item })
   }
+  const allDayEvents = eventItems.filter((i) => i.allDay)
   const note = data.notes.find((n) => n.date === date)?.text ?? ''
   const listed = [...dayTasks, ...carried]
   const doneCount = listed.filter((t) => t.status === 'done').length
@@ -154,13 +177,20 @@ export default function DayPage({ date }: DayPageProps) {
           <Flex vertical gap={16}>
             <Card
               title="일정"
-              extra={<Button type="text" size="small" icon={<PlusOutlined />} aria-label="일정 추가" onClick={() => setEventDraft({ date, hour: 9 })} />}
+              extra={<Button type="text" size="small" icon={<PlusOutlined />} aria-label="일정 추가" onClick={() => setDrawer(newEvent(date, 9))} />}
             >
+              {allDayEvents.length > 0 && (
+                <Flex vertical gap={2} style={{ marginBottom: 8 }} aria-label="종일 일정">
+                  {allDayEvents.map((i) => (
+                    <ItemChip key={i.key} item={i} color={categoryColor(data.categories, i.categoryId)} onOpen={(item) => setDrawer({ mode: 'view', item })} />
+                  ))}
+                </Flex>
+              )}
               <Timeline
                 isToday={date === today}
                 blocks={blocks}
                 onOpenBlock={openBlock}
-                onOpenEmpty={(hour) => setEventDraft({ date, hour })}
+                onOpenEmpty={(hour) => setDrawer(newEvent(date, hour))}
               />
             </Card>
             <Card title="메모">
@@ -176,7 +206,7 @@ export default function DayPage({ date }: DayPageProps) {
         onClose={() => setForm({ open: false })}
       />
       <TaskActionModal action={action} onClose={() => setAction(null)} />
-      <EventModal draft={eventDraft} onClose={() => setEventDraft(null)} />
+      <ItemDrawer state={drawer} today={today} onChange={setDrawer} onOpenDay={goTo} />
     </>
   )
 }
