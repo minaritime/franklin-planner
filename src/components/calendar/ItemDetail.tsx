@@ -78,7 +78,7 @@ export default function ItemDetail({ item, task, event, categories, goals, onEdi
             {task.status === 'done' ? '완료 취소' : '완료'}
           </Button>
         )}
-        {task && <Button onClick={onOpenDay}>하루 화면</Button>}
+        {task && <Button onClick={onOpenDay}>계획 화면</Button>}
         <Button onClick={onEdit}>수정</Button>
         {item.recurring ? (
           <Button danger onClick={onDelete}>

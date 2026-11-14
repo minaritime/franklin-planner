@@ -38,7 +38,7 @@ const corner: Finder = (root) => root.querySelector('.ant-layout-sider [aria-lab
 /** 목록 첫 줄의 할일 글자 */
 const firstTaskTitle: Finder = (root) => root.querySelector('[aria-label^="우선순위 "]')?.nextElementSibling?.firstElementChild ?? null
 
-const MOVE_DESC = '하루, 달력, 목표, 설정 화면으로 옮겨 갑니다.'
+const MOVE_DESC = '계획, 달력, 목표, 설정 화면으로 옮겨 갑니다.'
 
 const NAV_NOTES: readonly ScreenNote[] = [
   { title: '화면 바꾸기', desc: MOVE_DESC, find: sideMenu, wideOnly: true },

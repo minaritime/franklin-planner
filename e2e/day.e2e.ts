@@ -106,7 +106,7 @@ test('목표를 만들고 할일을 연결하면 진행률에 잡힌다', async 
   await page.getByRole('dialog').getByRole('button', { name: '저장' }).click()
   await expect(page.getByText('0 / 0')).toBeVisible()
 
-  await page.getByRole('menuitem', { name: '하루' }).click()
+  await page.getByRole('menuitem', { name: '계획' }).click()
   await page.getByRole('textbox', { name: '새 할일' }).fill('1장 쓰기')
   await page.getByRole('button', { name: '추가', exact: true }).click()
   await page.getByText('1장 쓰기').click()
