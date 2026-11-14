@@ -197,3 +197,31 @@ test('장기 할일은 마감일까지 매일 우선 업무 목록에 나오고,
   await page.getByRole('button', { name: '다음날' }).click()
   await expect(page.getByText('할일 없음')).toBeVisible()
 })
+
+test('계획 화면 시간표 빈 곳을 끌어 일정을 만들고, 끄는 동안 글자가 선택되지 않는다', async ({ page }) => {
+  const grid = page.getByRole('button', { name: '시간표 빈 곳' })
+  await grid.scrollIntoViewIfNeeded()
+  const box = (await grid.boundingBox())!
+  // 시간표는 8시부터 48px 한 칸
+  await page.mouse.move(box.x + 60, box.y + 48 * 2 + 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 60, box.y + 48 * 3, { steps: 4 })
+  await page.mouse.move(box.x - 300, box.y + 48 * 3.5, { steps: 4 })
+  expect(await page.evaluate(() => window.getSelection()?.toString() ?? '')).toBe('')
+  await page.mouse.up()
+  const drawer = page.locator('.ant-drawer-open')
+  await expect(drawer.getByText('새로 만들기')).toBeVisible()
+  await expect(drawer.locator('input[value="10:00"]')).toBeVisible()
+  await expect(drawer.locator('input[value="11:30"]')).toBeVisible()
+})
+
+test('달력에서 고른 보기는 다른 화면에 갔다 와도 그대로다', async ({ page }) => {
+  await page.goto('./#/calendar')
+  await page.keyboard.press('w')
+  await expect(page).toHaveURL(/#\/calendar\/week\//)
+  await page.getByRole('menuitem', { name: '계획' }).click()
+  await page.getByRole('menuitem', { name: '달력' }).click()
+  await expect(page.getByRole('button', { name: /하루 보기$/ })).toHaveCount(7)
+  await page.reload()
+  await expect(page.getByRole('button', { name: /하루 보기$/ })).toHaveCount(7)
+})

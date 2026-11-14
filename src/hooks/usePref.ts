@@ -43,4 +43,5 @@ export const PREF_KEYS = {
   hiddenCategories: 'planner:calendar-hidden',
   weekStart: 'planner:week-start',
   lastCategory: 'planner:last-category',
+  calendarView: 'planner:calendar-view',
 } as const

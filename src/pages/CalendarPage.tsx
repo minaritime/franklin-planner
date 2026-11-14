@@ -15,6 +15,7 @@ import { SHORTCUT_LINES, useCalendarKeys } from '../components/calendar/useCalen
 import { useScopeAsk } from '../components/calendar/useScopeAsk'
 import {
   buildItems,
+  CAL_VIEWS,
   NO_CATEGORY,
   rangeFor,
   stepDate,
@@ -26,7 +27,7 @@ import {
 } from '../data/calendarItems'
 import { addDays } from '../data/logic'
 import { undo, usePlanner } from '../data/store'
-import { isStringArray, isWeekStart, PREF_KEYS, usePref } from '../hooks/usePref'
+import { isStringArray, isWeekStart, PREF_KEYS, readPref, usePref, writePref } from '../hooks/usePref'
 import { navigate } from '../hooks/useHashRoute'
 import { useToday } from '../hooks/useToday'
 
@@ -35,14 +36,20 @@ interface CalendarPageProps {
   readonly date?: string
 }
 
-const go = (view: CalView, date: string): void => navigate({ page: 'calendar', view, date })
+const isCalView = (v: unknown): v is CalView | null => v === null || CAL_VIEWS.includes(v as CalView)
+
+/** 고른 보기는 기억해 두고, 다른 화면에 갔다 와도 그 보기로 연다 */
+const go = (view: CalView, date: string): void => {
+  writePref(PREF_KEYS.calendarView, view)
+  navigate({ page: 'calendar', view, date })
+}
 
 export default function CalendarPage({ view: routeView, date: routeDate }: CalendarPageProps) {
   const data = usePlanner()
   const today = useToday()
   const { message } = App.useApp()
   const isWide = Grid.useBreakpoint().md ?? true
-  const view: CalView = routeView ?? (isWide ? 'month' : 'agenda')
+  const view: CalView = routeView ?? readPref<CalView | null>(PREF_KEYS.calendarView, null, isCalView) ?? (isWide ? 'month' : 'agenda')
   const date = routeDate ?? today
 
   const [hiddenList, setHiddenList] = usePref<string[]>(PREF_KEYS.hiddenCategories, [], isStringArray)

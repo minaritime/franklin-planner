@@ -45,3 +45,10 @@ body {
     background: var(--scrollbar-thumb-hover) padding-box;
   }
 }
+
+/* 끌어서 옮기거나 만드는 동안 글자 선택 막기 */
+.drag-no-select,
+.drag-no-select * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}

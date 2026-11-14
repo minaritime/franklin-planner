@@ -29,10 +29,7 @@ type FormState = { readonly open: false } | { readonly open: true; readonly task
 const goTo = (date: string): void => navigate({ page: 'day', date })
 
 const hh = (hour: number): string => `${String(Math.min(hour, 23)).padStart(2, '0')}:00`
-const newEvent = (date: string, hour: number): DrawerState => ({
-  mode: 'create',
-  draft: { kind: 'event', date, start: hh(hour), end: hour >= 23 ? '23:59' : hh(hour + 1) },
-})
+const newEvent = (date: string, start: string, end: string): DrawerState => ({ mode: 'create', draft: { kind: 'event', date, start, end } })
 
 function relativeDay(days: number): string {
   if (days === 1) return '내일'
@@ -177,7 +174,7 @@ export default function DayPage({ date }: DayPageProps) {
           <Flex vertical gap={16}>
             <Card
               title="일정"
-              extra={<Button type="text" size="small" icon={<PlusOutlined />} aria-label="일정 추가" onClick={() => setDrawer(newEvent(date, 9))} />}
+              extra={<Button type="text" size="small" icon={<PlusOutlined />} aria-label="일정 추가" onClick={() => setDrawer(newEvent(date, hh(9), hh(10)))} />}
             >
               {allDayEvents.length > 0 && (
                 <Flex vertical gap={2} style={{ marginBottom: 8 }} aria-label="종일 일정">
@@ -190,7 +187,7 @@ export default function DayPage({ date }: DayPageProps) {
                 isToday={date === today}
                 blocks={blocks}
                 onOpenBlock={openBlock}
-                onOpenEmpty={(hour) => setDrawer(newEvent(date, hour))}
+                onCreate={(start, end) => setDrawer(newEvent(date, start, end))}
               />
             </Card>
             <Card title="메모">

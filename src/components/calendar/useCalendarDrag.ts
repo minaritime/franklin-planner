@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { CalItem } from '../../data/calendarItems'
 import { toMinutes } from '../../data/timeline'
+import { lockTextSelect } from './selectLock'
 
 /** 놓을 자리: 날짜 칸(종일) 또는 시간 칸의 몇 분 */
 export interface DropTarget {
@@ -75,6 +76,7 @@ export function useCalendarDrag(onDrop: (state: DragState) => void) {
       const p = pending.current
       pending.current = null
       if (!p) return
+      lockTextSelect(false)
       // 만들기는 그냥 눌러도 된다 (1시간짜리). 옮기기·길이는 움직였을 때만
       if (p.started || p.state.mode === 'create') {
         justDragged.current = p.started
@@ -89,6 +91,7 @@ export function useCalendarDrag(onDrop: (state: DragState) => void) {
     // 터치 중 스크롤 등으로 브라우저가 끌기를 끊으면 아무것도 바꾸지 않고 끝낸다
     const abort = (): void => {
       pending.current = null
+      lockTextSelect(false)
       setDrag(null)
     }
     const cancel = (e: KeyboardEvent): void => {
@@ -102,6 +105,7 @@ export function useCalendarDrag(onDrop: (state: DragState) => void) {
     window.addEventListener('pointercancel', abort)
     window.addEventListener('keydown', cancel)
     return () => {
+      lockTextSelect(false)
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
       window.removeEventListener('pointercancel', abort)
@@ -112,6 +116,9 @@ export function useCalendarDrag(onDrop: (state: DragState) => void) {
   const begin = useCallback((e: ReactPointerEvent, state: Omit<DragState, 'target'>) => {
     if (e.button !== 0) return
     e.stopPropagation()
+    // 마우스로 누른 곳에서 글자 선택이 시작되지 않게
+    if (e.pointerType === 'mouse') e.preventDefault()
+    lockTextSelect(true)
     const target = targetAt(e.clientX, e.clientY)
     pending.current = { startX: e.clientX, startY: e.clientY, state: { ...state, target }, started: false }
     if (state.mode === 'create') setDrag({ ...state, target })
