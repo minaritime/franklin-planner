@@ -103,7 +103,7 @@ export default function App() {
           <SideNav items={NAV} active={route.page} sync={sync} onSelect={go} corner={<HelpButton onClick={openHelp} />} />
         </Layout.Sider>
       )}
-      <Layout.Content style={{ padding: isWide ? 24 : '16px 16px 88px', maxWidth: 1280, width: '100%' }}>
+      <Layout.Content style={{ padding: isWide ? 24 : '16px 16px 88px', maxWidth: 1280, width: '100%', margin: '0 auto' }}>
         {saveFailed && (
           <Alert
             type="error"
