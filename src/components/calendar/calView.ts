@@ -7,10 +7,3 @@ const isCalView = (v: unknown): v is CalView | null => v === null || CAL_VIEWS.i
 export function resolveCalView(routeView: CalView | undefined, isWide: boolean): CalView {
   return routeView ?? readPref<CalView | null>(PREF_KEYS.calendarView, null, isCalView) ?? (isWide ? 'month' : 'agenda')
 }
-
-export const CAL_VIEW_LABELS: Readonly<Record<CalView, string>> = {
-  month: '월',
-  week: '주',
-  day: '일',
-  agenda: '목록',
-}

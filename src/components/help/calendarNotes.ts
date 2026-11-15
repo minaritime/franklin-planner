@@ -38,13 +38,24 @@ const timeBlock: Finder = (root) => {
 
 const CHIP_DESC = '왼쪽 줄 색은 분류, 앞 글자는 할일의 우선순위입니다. 누르면 오른쪽에 자세히 나옵니다.'
 
+/** 오늘 칸 (오늘이 안 보이는 달이면 첫 칸) */
+const todayCell: Finder = (root, today) => byLabel(today)(mainOf(root)) ?? mainOf(root).querySelector('[role="gridcell"]')
+
 const MONTH_NOTES: readonly ScreenNote[] = [
   {
     title: '날짜 칸',
     desc: '빈 곳을 누르면 그날로 새로 만들고, 날짜 숫자를 누르면 그날 하루 보기로 갑니다. 하루에 많으면 "+몇 개 더"로 접힙니다.',
-    find: (root, today) => byLabel(today)(mainOf(root)) ?? mainOf(root).querySelector('[role="gridcell"]'),
+    find: todayCell,
+    wideOnly: true,
   },
-  { title: '할일·일정', desc: `${CHIP_DESC} 끌어서 다른 날로 옮깁니다.`, find: firstChip },
+  { title: '할일·일정', desc: `${CHIP_DESC} 끌어서 다른 날로 옮깁니다.`, find: firstChip, wideOnly: true },
+  // 휴대폰 월 보기는 칩 대신 점만 보인다
+  {
+    title: '날짜 칸',
+    desc: '점은 그날 있는 할일·일정이고, 점 색은 분류입니다. 날짜 칸을 누르면 그날 하루 보기로 가서 자세히 봅니다.',
+    find: todayCell,
+    narrowOnly: true,
+  },
 ]
 
 const WEEK_NOTES: readonly ScreenNote[] = [

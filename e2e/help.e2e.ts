@@ -62,32 +62,58 @@ test('설명서를 켠 동안만 예시 할일로 화면을 채워 설명하고,
   expect(await page.evaluate(() => localStorage.getItem('planner:data'))).toBe(saved)
 })
 
-test('달력 설명서는 보던 보기부터 설명하고, 다음을 누르면 나머지 보기로 바꿔 가며 설명한 뒤 끄면 보던 보기로 돌아온다', async ({ page }) => {
+test('달력 설명서는 보던 보기부터 설명하고, 다음을 누르면 나머지 보기로 바꿔 가며 번호를 이어 센 뒤 끄면 보던 보기로 돌아온다', async ({ page }) => {
   await page.goto('./#/calendar/week/2026-11-18')
   await page.getByRole('button', { name: '사용 설명서' }).first().click()
   const bar = page.getByRole('toolbar', { name: '설명 넘기기' })
-  await expect(bar).toContainText('주 보기')
   await expect(page.getByRole('dialog', { name: '요일' })).toBeVisible()
+  await expect(bar).toContainText('1 / 21')
+  await expect(bar).not.toContainText('보기')
   await expect(page.getByRole('button', { name: /\. 시간표$/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /\. 작은 달력$/ })).toBeVisible()
 
-  const seen: string[] = []
+  const views: string[] = []
   for (let i = 0; i < 40 && !(await bar.getByRole('button', { name: '다음' }).isDisabled()); i++) {
     await bar.getByRole('button', { name: '다음' }).click()
-    const text = (await bar.textContent()) ?? ''
-    const label = text.match(/(월|주|일|목록) 보기/)?.[0]
-    if (label && !seen.includes(label)) seen.push(label)
+    const view = page.url().match(/#\/calendar\/(\w+)\//)?.[1]
+    if (view && views.at(-1) !== view) views.push(view)
   }
-  expect(seen).toEqual(['주 보기', '월 보기', '일 보기', '목록 보기'])
-  await expect(page).toHaveURL(/#\/calendar\/agenda\/2026-11-18$/)
+  expect(views).toEqual(['week', 'month', 'day', 'agenda'])
+  await expect(bar).toContainText('21 / 21')
   await expect(page.getByRole('dialog', { name: '할일·일정 줄' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '21. 할일·일정 줄' })).toBeVisible()
 
   // 앞 보기로 되돌아가면 그 보기의 마지막 설명이 나온다
   await bar.getByRole('button', { name: '이전' }).click()
   await bar.getByRole('button', { name: '이전' }).click()
-  await expect(bar).toContainText('일 보기')
+  await expect(page).toHaveURL(/#\/calendar\/day\/2026-11-18$/)
   await expect(page.getByRole('dialog', { name: '시간 있는 할일·일정' })).toBeVisible()
+  await expect(bar).toContainText('19 / 21')
 
   await bar.getByRole('button', { name: '설명 끝내기' }).click()
   await expect(page).toHaveURL(/#\/calendar\/week\/2026-11-18$/)
+})
+
+test('설명서에서 점선 칸을 누르면 그 칸 설명으로 바로 간다 (안쪽 작은 칸이 먼저 눌린다)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 860 })
+  await page.goto('./#/calendar/week/2026-11-18')
+  await page.getByRole('button', { name: '사용 설명서' }).first().click()
+  await expect(page.getByRole('dialog', { name: '요일' })).toBeVisible()
+
+  // 작은 달력 칸 가운데를 누른다
+  const mini = await page.locator('.ant-card', { has: page.getByLabel('작은 달력 이전 달') }).boundingBox()
+  if (!mini) throw new Error('작은 달력이 안 보임')
+  await page.mouse.click(mini.x + mini.width / 2, mini.y + mini.height / 2)
+  await expect(page.getByRole('dialog', { name: '작은 달력' })).toBeVisible()
+
+  // 시간표 안의 일정 블록은 시간표보다 먼저 눌린다
+  const block = page.locator('[data-calendar-main] [data-drop-col] [data-item-key]').first()
+  const b = await block.boundingBox()
+  if (!b) throw new Error('일정 블록이 안 보임')
+  await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2)
+  await expect(page.getByRole('dialog', { name: '시간 있는 할일·일정' })).toBeVisible()
+
+  // 지금 설명 중인 칸을 다시 눌러도 그대로다
+  await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2)
+  await expect(page.getByRole('dialog', { name: '시간 있는 할일·일정' })).toBeVisible()
 })

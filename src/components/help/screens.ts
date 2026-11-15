@@ -1,5 +1,4 @@
 import type { CalView } from '../../data/calendarItems'
-import { CAL_VIEW_LABELS } from '../calendar/calView'
 import type { PageKey } from '../SideNav'
 import { CALENDAR_COMMON_NOTES, CALENDAR_VIEW_NOTES } from './calendarNotes'
 import { byButton, byCard, byLabel, corner, NAV_NOTES, type Finder, type ScreenNote } from './finders'
@@ -112,15 +111,10 @@ const SCREEN_NOTES: Readonly<Record<Exclude<PageKey, 'calendar'>, readonly Scree
 /** 설명서 한 묶음. view 가 있으면 달력을 그 보기로 바꾼 뒤 설명한다 */
 export interface TourSection {
   readonly view?: CalView
-  readonly label?: string
   readonly notes: readonly ScreenNote[]
 }
 
-const viewSection = (view: CalView, notes: readonly ScreenNote[]): TourSection => ({
-  view,
-  label: `${CAL_VIEW_LABELS[view]} 보기`,
-  notes,
-})
+const viewSection = (view: CalView, notes: readonly ScreenNote[]): TourSection => ({ view, notes })
 
 /**
  * 화면별 설명 순서. 달력은 지금 보기의 설명부터 시작해 화면 공통 부분을 설명하고,

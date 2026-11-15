@@ -43,6 +43,11 @@ function isOffscreen(box: Rect): boolean {
   return box.top + box.height < 0 || box.top > window.innerHeight
 }
 
+/** 넓은 칸부터 (원래 순번 i 를 같이 들고 간다) */
+function byAreaDesc(found: readonly FoundNote[]): { item: FoundNote; i: number }[] {
+  return found.map((item, i) => ({ item, i })).sort((a, b) => b.item.box.width * b.item.box.height - a.item.box.width * a.item.box.height)
+}
+
 function badgePosition(box: Rect): CSSProperties {
   const onTop = box.width < SMALL_BOX
   const left = onTop ? box.left + box.width / 2 - BADGE / 2 : box.left - BADGE / 2
@@ -107,8 +112,6 @@ function Callout({ item, index, reserve }: CalloutProps) {
 interface StepBarProps {
   readonly index: number
   readonly total: number
-  /** 달력 보기 이름 (월 보기 등) */
-  readonly label?: string
   readonly isFirst: boolean
   readonly isLast: boolean
   readonly isWide: boolean
@@ -117,7 +120,7 @@ interface StepBarProps {
 }
 
 /** 화면 아래 가운데에 고정된 이전·다음 막대. 설명 카드가 움직여도 버튼 자리는 그대로다 */
-function StepBar({ index, total, label, isFirst, isLast, isWide, onStep, onClose }: StepBarProps) {
+function StepBar({ index, total, isFirst, isLast, isWide, onStep, onClose }: StepBarProps) {
   const { token } = theme.useToken()
   return (
     <Flex
@@ -143,8 +146,7 @@ function StepBar({ index, total, label, isFirst, isLast, isWide, onStep, onClose
         이전
       </Button>
       <Typography.Text type="secondary" className="num" style={{ minWidth: 56, textAlign: 'center' }}>
-        {label && <span style={{ marginInlineEnd: 8 }}>{label}</span>}
-        {total > 0 ? `${index + 1} / ${total}` : ''}
+        {total > 0 && index >= 0 ? `${index + 1} / ${total}` : ''}
       </Typography.Text>
       <Button shape="round" type="primary" disabled={isLast} onClick={() => onStep(1)}>
         다음
@@ -170,7 +172,7 @@ export default function HelpOverlay({ page, today, isWide, calendarView, onShowV
     if (!isShowing) return NO_NOTES
     const shown = section.notes.filter((n) => (isWide ? !n.narrowOnly : !n.wideOnly))
     // 휴대폰의 아래 탭 막대는 화면 맨 아래라 마지막 순서로 둔다
-    return [...shown.filter((n) => !n.narrowOnly), ...shown.filter((n) => n.narrowOnly)]
+    return [...shown.filter((n) => !n.last), ...shown.filter((n) => n.last)]
   }, [section, isShowing, isWide])
 
   // 설명할 차례의 보기가 아니면 달력을 그 보기로 바꾼다
@@ -183,6 +185,11 @@ export default function HelpOverlay({ page, today, isWide, calendarView, onShowV
   const [active, setActive] = useState(0)
   const current = found[Math.min(active, found.length - 1)]
   const index = Math.min(active, found.length - 1)
+  // 번호는 보기를 넘어가도 이어서 센다. 지금 묶음은 화면에서 찾은 수, 나머지 묶음은 설명 수로 센다
+  const countOf = (i: number): number =>
+    i === sectionIndex ? found.length : sections[i].notes.filter((n) => (isWide ? !n.narrowOnly : !n.wideOnly)).length
+  const offset = sections.slice(0, sectionIndex).reduce((sum, _, i) => sum + countOf(i), 0)
+  const total = sections.reduce((sum, _, i) => sum + countOf(i), 0)
   const isFirstSection = sectionIndex <= 0
   const isLastSection = sectionIndex >= sections.length - 1
 
@@ -230,61 +237,79 @@ export default function HelpOverlay({ page, today, isWide, calendarView, onShowV
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: Z }} aria-label="사용 설명" onClick={(e) => e.stopPropagation()}>
       {!current && <div style={{ position: 'fixed', inset: 0, background: MASK }} />}
-      {found.map((item, i) => {
+      {current && (
+        <div
+          style={{
+            position: 'fixed',
+            ...current.box,
+            borderRadius: token.borderRadius,
+            border: `2px solid ${token.colorPrimary}`,
+            boxShadow: `0 0 0 9999px ${MASK}`,
+            zIndex: Z,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+      {/* 칸을 누르면 그 설명으로 간다. 큰 칸부터 깔아 안쪽 작은 칸이 위에서 눌리게 한다 */}
+      {byAreaDesc(found).map(({ item, i }) => {
         const isActive = item === current
         return (
-          <div key={`${item.note.title}-${i}`}>
-            <div
-              style={{
-                position: 'fixed',
-                ...item.box,
-                borderRadius: token.borderRadius,
-                border: isActive ? `2px solid ${token.colorPrimary}` : '1.5px dashed rgba(255, 255, 255, 0.75)',
-                boxShadow: isActive ? `0 0 0 9999px ${MASK}` : undefined,
-                zIndex: isActive ? Z : Z + 1,
-                pointerEvents: 'none',
-              }}
-            />
-            {!isOffscreen(item.box) && (
-              <button
-                type="button"
-                className="num"
-                aria-label={`${i + 1}. ${item.note.title}`}
-                onClick={() => setActive(i)}
-                style={{
-                  position: 'fixed',
-                  ...badgePosition(item.box),
-                  zIndex: Z + 1,
-                  width: BADGE,
-                  height: BADGE,
-                  padding: 0,
-                  borderRadius: '50%',
-                  border: `2px solid ${isActive ? token.colorBgContainer : 'transparent'}`,
-                  background: isActive ? token.colorPrimary : 'rgba(255, 255, 255, 0.9)',
-                  color: isActive ? token.colorTextLightSolid : '#1f1f1f',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 4px rgba(0, 0, 0, 0.3)',
-                }}
-              >
-                {i + 1}
-              </button>
-            )}
-          </div>
+          <div
+            key={`box-${item.note.title}-${i}`}
+            data-help-box={i + 1}
+            onClick={() => setActive(i)}
+            style={{
+              position: 'fixed',
+              ...item.box,
+              borderRadius: token.borderRadius,
+              border: isActive ? undefined : '1.5px dashed rgba(255, 255, 255, 0.75)',
+              zIndex: Z + 1,
+              cursor: isActive ? 'default' : 'pointer',
+            }}
+          />
+        )
+      })}
+      {found.map((item, i) => {
+        const isActive = item === current
+        if (isOffscreen(item.box)) return null
+        return (
+          <button
+            key={`badge-${item.note.title}-${i}`}
+            type="button"
+            className="num"
+            aria-label={`${offset + i + 1}. ${item.note.title}`}
+            onClick={() => setActive(i)}
+            style={{
+              position: 'fixed',
+              ...badgePosition(item.box),
+              zIndex: Z + 1,
+              width: BADGE,
+              height: BADGE,
+              padding: 0,
+              borderRadius: '50%',
+              border: `2px solid ${isActive ? token.colorBgContainer : 'transparent'}`,
+              background: isActive ? token.colorPrimary : 'rgba(255, 255, 255, 0.9)',
+              color: isActive ? token.colorTextLightSolid : '#1f1f1f',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 1px 4px rgba(0, 0, 0, 0.3)',
+            }}
+          >
+            {offset + i + 1}
+          </button>
         )
       })}
       {current ? (
-        <Callout item={current} index={index} reserve={reserve} />
+        <Callout item={current} index={offset + index} reserve={reserve} />
       ) : (
         <Typography.Text style={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', color: '#fff', zIndex: Z + 2 }}>
           이 화면에서 설명할 부분을 찾는 중입니다
         </Typography.Text>
       )}
       <StepBar
-        index={index}
-        total={found.length}
-        label={section.label}
+        index={found.length > 0 ? offset + index : -1}
+        total={total}
         isFirst={isFirstSection && index <= 0}
         isLast={isLastSection && index >= found.length - 1}
         isWide={isWide}

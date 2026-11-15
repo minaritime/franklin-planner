@@ -9,6 +9,8 @@ export interface ScreenNote {
   readonly wideOnly?: boolean
   /** 좁은 화면에만 있는 부분 (아래 탭 막대) */
   readonly narrowOnly?: boolean
+  /** 화면 맨 아래에 있어 순서를 맨 끝으로 미룬다 (휴대폰 아래 탭 막대) */
+  readonly last?: boolean
 }
 
 export const byLabel =
@@ -37,5 +39,5 @@ const MOVE_DESC = '계획, 달력, 목표, 설정 화면으로 옮겨 갑니다.
 
 export const NAV_NOTES: readonly ScreenNote[] = [
   { title: '화면 바꾸기', desc: MOVE_DESC, find: sideMenu, wideOnly: true },
-  { title: '화면 바꾸기', desc: MOVE_DESC, find: bottomBar, narrowOnly: true },
+  { title: '화면 바꾸기', desc: MOVE_DESC, find: bottomBar, narrowOnly: true, last: true },
 ]
