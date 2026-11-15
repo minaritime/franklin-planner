@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import type { CalView } from '../../data/calendarItems'
 import type { PageKey } from '../SideNav'
 import { placeCallout, type Rect, type Size } from './placement'
-import { tourFor, type ScreenNote } from './screens'
+import { startSectionOf, tourFor, type ScreenNote } from './screens'
 import { useNoteBoxes, type FoundNote } from './useNoteBoxes'
 
 interface HelpOverlayProps {
@@ -162,10 +162,9 @@ function StepBar({ index, total, isFirst, isLast, isWide, onStep, onClose }: Ste
  */
 export default function HelpOverlay({ page, today, isWide, calendarView, onShowView, onClose }: HelpOverlayProps) {
   const { token } = theme.useToken()
-  // 설명 순서는 켤 때 보던 보기를 기준으로 정하고, 넘기는 동안에는 바꾸지 않는다
-  const [startView] = useState(calendarView)
-  const sections = useMemo(() => tourFor(page, startView), [page, startView])
-  const [sectionIndex, setSectionIndex] = useState(0)
+  // 번호는 늘 같은 순서로 매기고, 켤 때 보던 보기의 설명부터 보여 준다
+  const sections = useMemo(() => tourFor(page), [page])
+  const [sectionIndex, setSectionIndex] = useState(() => startSectionOf(sections, calendarView))
   const section = sections[Math.min(sectionIndex, sections.length - 1)]
   const isShowing = !section.view || section.view === calendarView
   const notes = useMemo(() => {
@@ -310,8 +309,8 @@ export default function HelpOverlay({ page, today, isWide, calendarView, onShowV
       <StepBar
         index={found.length > 0 ? offset + index : -1}
         total={total}
-        isFirst={isFirstSection && index <= 0}
-        isLast={isLastSection && index >= found.length - 1}
+        isFirst={isFirstSection && found.length > 0 && index <= 0}
+        isLast={isLastSection && found.length > 0 && index >= found.length - 1}
         isWide={isWide}
         onStep={step}
         onClose={onClose}

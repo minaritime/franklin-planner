@@ -62,49 +62,67 @@ test('설명서를 켠 동안만 예시 할일로 화면을 채워 설명하고,
   expect(await page.evaluate(() => localStorage.getItem('planner:data'))).toBe(saved)
 })
 
-test('달력 설명서는 보던 보기부터 설명하고, 다음을 누르면 나머지 보기로 바꿔 가며 번호를 이어 센 뒤 끄면 보던 보기로 돌아온다', async ({ page }) => {
+test('달력 설명서 번호는 월 보기 기준으로 고정이고, 주 보기에서 켜면 주 설명 번호부터 시작한다', async ({ page }) => {
   await page.goto('./#/calendar/week/2026-11-18')
   await page.getByRole('button', { name: '사용 설명서' }).first().click()
   const bar = page.getByRole('toolbar', { name: '설명 넘기기' })
+  // 월 보기 묶음(월 2 + 공통 10) 다음이 주 보기 첫 설명
   await expect(page.getByRole('dialog', { name: '요일' })).toBeVisible()
-  await expect(bar).toContainText('1 / 21')
-  await expect(bar).not.toContainText('보기')
-  await expect(page.getByRole('button', { name: /\. 시간표$/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /\. 작은 달력$/ })).toBeVisible()
+  await expect(bar).toContainText('13 / 21')
+  await expect(page.getByRole('button', { name: '13. 요일' })).toBeVisible()
 
+  // 다음으로 끝까지: 일, 목록 순
   const views: string[] = []
   for (let i = 0; i < 40 && !(await bar.getByRole('button', { name: '다음' }).isDisabled()); i++) {
     await bar.getByRole('button', { name: '다음' }).click()
     const view = page.url().match(/#\/calendar\/(\w+)\//)?.[1]
     if (view && views.at(-1) !== view) views.push(view)
   }
-  expect(views).toEqual(['week', 'month', 'day', 'agenda'])
+  expect(views).toEqual(['week', 'day', 'agenda'])
   await expect(bar).toContainText('21 / 21')
-  await expect(page.getByRole('dialog', { name: '할일·일정 줄' })).toBeVisible()
-  await expect(page.getByRole('button', { name: '21. 할일·일정 줄' })).toBeVisible()
 
-  // 앞 보기로 되돌아가면 그 보기의 마지막 설명이 나온다
-  await bar.getByRole('button', { name: '이전' }).click()
-  await bar.getByRole('button', { name: '이전' }).click()
-  await expect(page).toHaveURL(/#\/calendar\/day\/2026-11-18$/)
-  await expect(page.getByRole('dialog', { name: '시간 있는 할일·일정' })).toBeVisible()
-  await expect(bar).toContainText('19 / 21')
+  // 이전으로 처음까지: 월 보기로 바뀌고 1번이 나온다
+  for (let i = 0; i < 40 && !(await bar.getByRole('button', { name: '이전' }).isDisabled()); i++) {
+    await bar.getByRole('button', { name: '이전' }).click()
+  }
+  await expect(page).toHaveURL(/#\/calendar\/month\/2026-11-18$/)
+  await expect(bar).toContainText('1 / 21')
+  await expect(page.getByRole('dialog', { name: '날짜 칸' })).toBeVisible()
 
   await bar.getByRole('button', { name: '설명 끝내기' }).click()
   await expect(page).toHaveURL(/#\/calendar\/week\/2026-11-18$/)
 })
 
+test('달력 설명서를 일·목록 보기에서 켜면 그 보기 설명 번호부터 시작한다', async ({ page }) => {
+  const bar = page.getByRole('toolbar', { name: '설명 넘기기' })
+  await page.goto('./#/calendar/day/2026-11-18')
+  await page.getByRole('button', { name: '사용 설명서' }).first().click()
+  await expect(page.getByRole('dialog', { name: '종일 칸' })).toBeVisible()
+  await expect(bar).toContainText('17 / 21')
+  await bar.getByRole('button', { name: '설명 끝내기' }).click()
+
+  await page.goto('./#/calendar/agenda/2026-11-18')
+  await page.getByRole('button', { name: '사용 설명서' }).first().click()
+  await expect(page.getByRole('dialog', { name: '날짜별 목록' })).toBeVisible()
+  await expect(bar).toContainText('20 / 21')
+})
+
 test('설명서에서 점선 칸을 누르면 그 칸 설명으로 바로 간다 (안쪽 작은 칸이 먼저 눌린다)', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 860 })
-  await page.goto('./#/calendar/week/2026-11-18')
+  // 월 보기: 작은 달력 칸 가운데를 누른다
+  await page.goto('./#/calendar/month/2026-11-18')
   await page.getByRole('button', { name: '사용 설명서' }).first().click()
-  await expect(page.getByRole('dialog', { name: '요일' })).toBeVisible()
-
-  // 작은 달력 칸 가운데를 누른다
+  await expect(page.getByRole('dialog', { name: '날짜 칸' })).toBeVisible()
   const mini = await page.locator('.ant-card', { has: page.getByLabel('작은 달력 이전 달') }).boundingBox()
   if (!mini) throw new Error('작은 달력이 안 보임')
   await page.mouse.click(mini.x + mini.width / 2, mini.y + mini.height / 2)
   await expect(page.getByRole('dialog', { name: '작은 달력' })).toBeVisible()
+  await page.getByRole('toolbar', { name: '설명 넘기기' }).getByRole('button', { name: '설명 끝내기' }).click()
+
+  // 주 보기
+  await page.goto('./#/calendar/week/2026-11-18')
+  await page.getByRole('button', { name: '사용 설명서' }).first().click()
+  await expect(page.getByRole('dialog', { name: '요일' })).toBeVisible()
 
   // 시간표 안의 일정 블록은 시간표보다 먼저 눌린다
   const block = page.locator('[data-calendar-main] [data-drop-col] [data-item-key]').first()

@@ -117,15 +117,19 @@ export interface TourSection {
 const viewSection = (view: CalView, notes: readonly ScreenNote[]): TourSection => ({ view, notes })
 
 /**
- * 화면별 설명 순서. 달력은 지금 보기의 설명부터 시작해 화면 공통 부분을 설명하고,
- * 이어서 나머지 보기(월, 주, 일, 목록 순)를 차례로 바꿔 가며 설명한다.
+ * 화면별 설명 순서. 달력은 번호가 늘 같도록 월 보기(공통 부분 포함), 주, 일, 목록 순서로 고정하고,
+ * 설명서를 켤 때 보던 보기의 묶음부터 시작한다 (startSectionOf).
  */
-export function tourFor(page: PageKey, view: CalView | null): readonly TourSection[] {
+export function tourFor(page: PageKey): readonly TourSection[] {
   if (page !== 'calendar') return [{ notes: SCREEN_NOTES[page] }]
-  const start: CalView = view ?? 'month'
-  const others = (Object.keys(CALENDAR_VIEW_NOTES) as CalView[]).filter((v) => v !== start)
+  const [first, ...rest] = Object.keys(CALENDAR_VIEW_NOTES) as CalView[]
   return [
-    viewSection(start, [...CALENDAR_VIEW_NOTES[start], ...NAV_NOTES, ...CALENDAR_COMMON_NOTES]),
-    ...others.map((v) => viewSection(v, CALENDAR_VIEW_NOTES[v])),
+    viewSection(first, [...CALENDAR_VIEW_NOTES[first], ...NAV_NOTES, ...CALENDAR_COMMON_NOTES]),
+    ...rest.map((v) => viewSection(v, CALENDAR_VIEW_NOTES[v])),
   ]
+}
+
+/** 보던 보기의 묶음 번호 (달력이 아니면 0) */
+export function startSectionOf(sections: readonly TourSection[], view: CalView | null): number {
+  return Math.max(0, sections.findIndex((s) => s.view !== undefined && s.view === view))
 }
