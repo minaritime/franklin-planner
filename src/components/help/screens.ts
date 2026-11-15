@@ -128,7 +128,11 @@ const CALENDAR_NOTES: readonly ScreenNote[] = [
   {
     title: '할일·일정',
     desc: '왼쪽 줄 색은 분류, 앞 글자는 할일의 우선순위입니다. 누르면 오른쪽에 자세히 나오고, 끌어서 다른 날(주·일 보기에서는 다른 시각)로 옮깁니다.',
-    find: (root) => root.querySelector('[data-item-key^="task:"]') ?? root.querySelector('[data-item-key]'),
+    // 왼쪽 '오늘 계획' 칸에도 같은 칩이 있으므로 큰 달력 안에서만 찾는다
+    find: (root) => {
+      const main = root.querySelector('[data-calendar-main]') ?? root
+      return main.querySelector('[data-item-key^="task:"]') ?? main.querySelector('[data-item-key]')
+    },
   },
   {
     title: '마감 일정',

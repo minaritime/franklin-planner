@@ -11,6 +11,7 @@ import ItemDrawer, { type DrawerState } from '../components/calendar/ItemDrawer'
 import MiniCalendar from '../components/calendar/MiniCalendar'
 import MonthView from '../components/calendar/MonthView'
 import TodayCard from '../components/calendar/TodayCard'
+import { useFitViewport } from '../components/calendar/useFitViewport'
 import TimeGridView from '../components/calendar/TimeGridView'
 import { useCalendarDrag, type DragState } from '../components/calendar/useCalendarDrag'
 import { SHORTCUT_LINES, useCalendarKeys } from '../components/calendar/useCalendarKeys'
@@ -40,6 +41,15 @@ interface CalendarPageProps {
 
 const isCalView = (v: unknown): v is CalView | null => v === null || CAL_VIEWS.includes(v as CalView)
 
+/** 본문 위아래 여백(24px)만큼 띄워 붙여 두고, 왼쪽 칸 안에서만 스크롤한다 (높이는 useFitViewport) */
+const SIDE_GAP = 24
+const SIDE_SCROLL_STYLE = {
+  position: 'sticky',
+  top: SIDE_GAP,
+  overflowY: 'auto',
+  overscrollBehavior: 'contain',
+} as const
+
 /** 고른 보기는 기억해 두고, 다른 화면에 갔다 와도 그 보기로 연다 */
 const go = (view: CalView, date: string): void => {
   writePref(PREF_KEYS.calendarView, view)
@@ -50,7 +60,10 @@ export default function CalendarPage({ view: routeView, date: routeDate }: Calen
   const data = usePlanner()
   const today = useToday()
   const { message } = App.useApp()
-  const isWide = Grid.useBreakpoint().md ?? true
+  const screens = Grid.useBreakpoint()
+  const isWide = screens.md ?? true
+  const isSideBySide = screens.xl ?? false
+  const sideRef = useFitViewport<HTMLDivElement>(isSideBySide, SIDE_GAP)
   const view: CalView = routeView ?? readPref<CalView | null>(PREF_KEYS.calendarView, null, isCalView) ?? (isWide ? 'month' : 'agenda')
   const date = routeDate ?? today
 
@@ -124,8 +137,15 @@ export default function CalendarPage({ view: routeView, date: routeDate }: Calen
       />
       <CategoryBar categories={data.categories} hidden={hidden} counts={counts} onToggle={toggleCategory} />
       <Row gutter={[24, 16]}>
-        <Col xs={24} xl={18}>
-          <Card styles={{ body: { padding: 0 } }} style={{ position: 'relative' }}>
+        <Col xs={{ span: 24, order: 2 }} xl={{ span: 6, order: 1 }}>
+          <Flex ref={sideRef} vertical gap={16} style={isSideBySide ? SIDE_SCROLL_STYLE : undefined}>
+            <MiniCalendar date={date} today={today} onPick={(d) => go(view, d)} />
+            <DeadlineCard tasks={data.tasks} today={today} onOpen={(item) => setDrawer({ mode: 'view', item })} />
+            <TodayCard date={date} today={today} onOpen={(item) => setDrawer({ mode: 'view', item })} onOpenPlan={() => navigate({ page: 'day', date })} />
+          </Flex>
+        </Col>
+        <Col xs={{ span: 24, order: 1 }} xl={{ span: 18, order: 2 }}>
+          <Card data-calendar-main styles={{ body: { padding: 0 } }} style={{ position: 'relative' }}>
             {dragLabel && (
               <div className="num" role="status" style={{ position: 'absolute', top: -30, right: 0, fontSize: 13 }}>
                 옮길 곳: {dragLabel.date}
@@ -162,13 +182,6 @@ export default function CalendarPage({ view: routeView, date: routeDate }: Calen
               <AgendaView from={range.from} to={range.to} today={today} items={items} categories={data.categories} onOpenItem={openItem} />
             )}
           </Card>
-        </Col>
-        <Col xs={24} xl={6}>
-          <Flex vertical gap={16}>
-            <MiniCalendar date={date} today={today} onPick={(d) => go(view, d)} />
-            <DeadlineCard tasks={data.tasks} today={today} onOpen={(item) => setDrawer({ mode: 'view', item })} />
-            <TodayCard date={date} today={today} onOpen={(item) => setDrawer({ mode: 'view', item })} onOpenPlan={() => navigate({ page: 'day', date })} />
-          </Flex>
         </Col>
       </Row>
       <ItemDrawer state={drawer} today={today} onChange={setDrawer} onOpenDay={(d) => navigate({ page: 'day', date: d })} />
