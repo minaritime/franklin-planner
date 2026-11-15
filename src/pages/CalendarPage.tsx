@@ -2,6 +2,7 @@ import { App, Card, Col, Flex, Grid, Modal, Row, Typography, type InputRef } fro
 import { useCallback, useMemo, useRef, useState } from 'react'
 import AgendaView from '../components/calendar/AgendaView'
 import { applyMove, applyResize } from '../components/calendar/applyDrop'
+import { resolveCalView } from '../components/calendar/calView'
 import CalendarToolbar from '../components/calendar/CalendarToolbar'
 import CategoryBar from '../components/calendar/CategoryBar'
 import DeadlineCard from '../components/calendar/DeadlineCard'
@@ -18,7 +19,6 @@ import { SHORTCUT_LINES, useCalendarKeys } from '../components/calendar/useCalen
 import { useScopeAsk } from '../components/calendar/useScopeAsk'
 import {
   buildItems,
-  CAL_VIEWS,
   NO_CATEGORY,
   rangeFor,
   stepDate,
@@ -30,7 +30,7 @@ import {
 } from '../data/calendarItems'
 import { addDays } from '../data/logic'
 import { undo, usePlanner } from '../data/store'
-import { isStringArray, isWeekStart, PREF_KEYS, readPref, usePref, writePref } from '../hooks/usePref'
+import { isStringArray, isWeekStart, PREF_KEYS, usePref, writePref } from '../hooks/usePref'
 import { navigate } from '../hooks/useHashRoute'
 import { useToday } from '../hooks/useToday'
 
@@ -38,8 +38,6 @@ interface CalendarPageProps {
   readonly view?: CalView
   readonly date?: string
 }
-
-const isCalView = (v: unknown): v is CalView | null => v === null || CAL_VIEWS.includes(v as CalView)
 
 /** 본문 위아래 여백(24px)만큼 띄워 붙여 두고, 왼쪽 칸 안에서만 스크롤한다 (높이는 useFitViewport) */
 const SIDE_GAP = 24
@@ -64,7 +62,7 @@ export default function CalendarPage({ view: routeView, date: routeDate }: Calen
   const isWide = screens.md ?? true
   const isSideBySide = screens.xl ?? false
   const sideRef = useFitViewport<HTMLDivElement>(isSideBySide, SIDE_GAP)
-  const view: CalView = routeView ?? readPref<CalView | null>(PREF_KEYS.calendarView, null, isCalView) ?? (isWide ? 'month' : 'agenda')
+  const view: CalView = resolveCalView(routeView, isWide)
   const date = routeDate ?? today
 
   const [hiddenList, setHiddenList] = usePref<string[]>(PREF_KEYS.hiddenCategories, [], isStringArray)

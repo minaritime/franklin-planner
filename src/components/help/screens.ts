@@ -1,49 +1,13 @@
+import type { CalView } from '../../data/calendarItems'
+import { CAL_VIEW_LABELS } from '../calendar/calView'
 import type { PageKey } from '../SideNav'
+import { CALENDAR_COMMON_NOTES, CALENDAR_VIEW_NOTES } from './calendarNotes'
+import { byButton, byCard, byLabel, corner, NAV_NOTES, type Finder, type ScreenNote } from './finders'
 
-/** 지금 화면에서 설명할 부분을 찾는다. 여러 개를 주면 전부 감싸는 상자를 그린다 */
-export type Finder = (root: ParentNode, today: string) => Element | readonly Element[] | null
-
-export interface ScreenNote {
-  readonly title: string
-  readonly desc: string
-  readonly find: Finder
-  /** 넓은 화면에만 있는 부분 (왼쪽 메뉴 등) */
-  readonly wideOnly?: boolean
-  /** 좁은 화면에만 있는 부분 (아래 탭 막대) */
-  readonly narrowOnly?: boolean
-}
-
-const byLabel =
-  (label: string) =>
-  (root: ParentNode): Element | null =>
-    root.querySelector(`[aria-label="${label}"]`)
-
-const byCard =
-  (title: string): Finder =>
-  (root) => {
-    const head = [...root.querySelectorAll('.ant-card-head-title')].find((el) => el.textContent?.trim() === title)
-    return head?.closest('.ant-card') ?? null
-  }
-
-const byButton =
-  (text: string): Finder =>
-  (root) =>
-    [...root.querySelectorAll('button')].find((el) => el.textContent?.trim() === text) ?? null
-
-const sideMenu: Finder = (root) => root.querySelector('.ant-layout-sider .ant-menu')
-const bottomBar: Finder = byLabel('화면 이동')
-/** 넓은 화면 왼쪽 아래 구석 (? 버튼과 저장 상태) */
-const corner: Finder = (root) => root.querySelector('.ant-layout-sider [aria-label="사용 설명서"]')?.parentElement ?? null
+export type { Finder, ScreenNote } from './finders'
 
 /** 목록 첫 줄의 할일 글자 */
 const firstTaskTitle: Finder = (root) => root.querySelector('[aria-label^="우선순위 "]')?.nextElementSibling?.firstElementChild ?? null
-
-const MOVE_DESC = '계획, 달력, 목표, 설정 화면으로 옮겨 갑니다.'
-
-const NAV_NOTES: readonly ScreenNote[] = [
-  { title: '화면 바꾸기', desc: MOVE_DESC, find: sideMenu, wideOnly: true },
-  { title: '화면 바꾸기', desc: MOVE_DESC, find: bottomBar, narrowOnly: true },
-]
 
 const DAY_NOTES: readonly ScreenNote[] = [
   ...NAV_NOTES,
@@ -104,43 +68,6 @@ const DAY_NOTES: readonly ScreenNote[] = [
   },
 ]
 
-const CALENDAR_NOTES: readonly ScreenNote[] = [
-  ...NAV_NOTES,
-  {
-    title: '기간 옮기기',
-    desc: '오늘로 돌아오거나 앞뒤 달(주, 날)로 넘깁니다. 키보드 T, ←, → 로도 됩니다.',
-    find: (root) => [byButton('오늘')(root, ''), byLabel('이전')(root), byLabel('다음')(root)].flat().filter((el): el is Element => el !== null),
-  },
-  { title: '검색', desc: '쓰는 대로 제목이 맞는 할일·일정만 남습니다. / 키를 누르면 바로 씁니다.', find: byLabel('검색') },
-  { title: '보기 바꾸기', desc: '월, 주, 일, 목록으로 바꿉니다. 키보드 M, W, D, A 로도 됩니다.', find: byLabel('보기') },
-  { title: '추가', desc: '할일이나 일정을 새로 만듭니다. "내일 4시 상담 30분"처럼 한 줄로 쓰고 칸 채우기를 눌러도 됩니다.', find: byButton('추가') },
-  { title: '더보기 메뉴', desc: '주 시작 요일(일요일·월요일)을 바꾸고 단축키를 봅니다.', find: byLabel('더보기') },
-  {
-    title: '분류 목록',
-    desc: '체크를 끄면 그 분류의 할일·일정이 달력에서 숨습니다. 분류 관리에서 분류를 만들고 색과 이름을 바꿉니다.',
-    find: byLabel('분류 목록'),
-  },
-  {
-    title: '날짜 칸',
-    desc: '빈 곳을 누르면 그날로 새로 만들고, 날짜 숫자를 누르면 그날 하루 보기로 갑니다.',
-    find: (root, today) => byLabel(today)(root),
-  },
-  {
-    title: '할일·일정',
-    desc: '왼쪽 줄 색은 분류, 앞 글자는 할일의 우선순위입니다. 누르면 오른쪽에 자세히 나오고, 끌어서 다른 날(주·일 보기에서는 다른 시각)로 옮깁니다.',
-    // 왼쪽 '오늘 계획' 칸에도 같은 칩이 있으므로 큰 달력 안에서만 찾는다
-    find: (root) => {
-      const main = root.querySelector('[data-calendar-main]') ?? root
-      return main.querySelector('[data-item-key^="task:"]') ?? main.querySelector('[data-item-key]')
-    },
-  },
-  {
-    title: '마감 일정',
-    desc: '마감일이 있는 할일이 가까운 순서로 모입니다. 이틀 안으로 남으면 색이 바뀝니다.',
-    find: byCard('마감 일정'),
-  },
-]
-
 const GOAL_NOTES: readonly ScreenNote[] = [
   ...NAV_NOTES,
   {
@@ -176,9 +103,35 @@ const SETTINGS_NOTES: readonly ScreenNote[] = [
   },
 ]
 
-export const SCREEN_NOTES: Readonly<Record<PageKey, readonly ScreenNote[]>> = {
+const SCREEN_NOTES: Readonly<Record<Exclude<PageKey, 'calendar'>, readonly ScreenNote[]>> = {
   day: DAY_NOTES,
-  calendar: CALENDAR_NOTES,
   goals: GOAL_NOTES,
   settings: SETTINGS_NOTES,
+}
+
+/** 설명서 한 묶음. view 가 있으면 달력을 그 보기로 바꾼 뒤 설명한다 */
+export interface TourSection {
+  readonly view?: CalView
+  readonly label?: string
+  readonly notes: readonly ScreenNote[]
+}
+
+const viewSection = (view: CalView, notes: readonly ScreenNote[]): TourSection => ({
+  view,
+  label: `${CAL_VIEW_LABELS[view]} 보기`,
+  notes,
+})
+
+/**
+ * 화면별 설명 순서. 달력은 지금 보기의 설명부터 시작해 화면 공통 부분을 설명하고,
+ * 이어서 나머지 보기(월, 주, 일, 목록 순)를 차례로 바꿔 가며 설명한다.
+ */
+export function tourFor(page: PageKey, view: CalView | null): readonly TourSection[] {
+  if (page !== 'calendar') return [{ notes: SCREEN_NOTES[page] }]
+  const start: CalView = view ?? 'month'
+  const others = (Object.keys(CALENDAR_VIEW_NOTES) as CalView[]).filter((v) => v !== start)
+  return [
+    viewSection(start, [...CALENDAR_VIEW_NOTES[start], ...NAV_NOTES, ...CALENDAR_COMMON_NOTES]),
+    ...others.map((v) => viewSection(v, CALENDAR_VIEW_NOTES[v])),
+  ]
 }

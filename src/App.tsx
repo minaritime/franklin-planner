@@ -1,5 +1,7 @@
 import { Alert, Grid, Layout, theme } from 'antd'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import type { CalView } from './data/calendarItems'
+import { resolveCalView } from './components/calendar/calView'
 import { todayString } from './data/logic'
 import { PreviewDataContext, useSaveFailed } from './data/store'
 import HelpButton from './components/help/HelpButton'
@@ -87,8 +89,24 @@ export default function App() {
   const sync = useSyncState()
   const [helpOpen, setHelpOpen] = useState(false)
   const today = useToday()
-  const openHelp = (): void => setHelpOpen(true)
-  const closeHelp = useCallback(() => setHelpOpen(false), [])
+  // 설명서가 달력 보기를 바꿔 가며 설명하므로, 켤 때의 주소를 기억했다가 끌 때 되돌린다
+  const helpStartHash = useRef<string | null>(null)
+  const openHelp = (): void => {
+    helpStartHash.current = window.location.hash
+    setHelpOpen(true)
+  }
+  const closeHelp = useCallback(() => {
+    setHelpOpen(false)
+    const start = helpStartHash.current
+    helpStartHash.current = null
+    if (start !== null && window.location.hash !== start) window.location.hash = start
+  }, [])
+  const calendarView = route.page === 'calendar' ? resolveCalView(route.view, isWide) : null
+  const calendarDate = route.page === 'calendar' ? route.date : undefined
+  const showCalendarView = useCallback(
+    (view: CalView) => navigate({ page: 'calendar', view, date: calendarDate }),
+    [calendarDate],
+  )
   // 설명서를 켠 동안만 예시 데이터로 화면을 그린다. 저장소는 그대로라 끄면 원래 내용이 돌아온다
   const anchor = sampleAnchor(route, today)
   const sample = useMemo(() => (helpOpen ? buildSampleData(anchor) : null), [helpOpen, anchor])
@@ -126,7 +144,16 @@ export default function App() {
           <HelpButton onClick={openHelp} style={{ position: 'fixed', left: 16, bottom: HELP_ABOVE_BAR, zIndex: 20 }} />
         </>
       )}
-      {helpOpen && <HelpOverlay page={route.page} today={anchor} isWide={isWide} onClose={closeHelp} />}
+      {helpOpen && (
+        <HelpOverlay
+          page={route.page}
+          today={anchor}
+          isWide={isWide}
+          calendarView={calendarView}
+          onShowView={showCalendarView}
+          onClose={closeHelp}
+        />
+      )}
     </Layout>
   )
 }

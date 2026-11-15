@@ -1,18 +1,25 @@
 import { CloseOutlined } from '@ant-design/icons'
 import { Button, Flex, theme, Typography } from 'antd'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
+import type { CalView } from '../../data/calendarItems'
 import type { PageKey } from '../SideNav'
 import { placeCallout, type Rect, type Size } from './placement'
-import { SCREEN_NOTES } from './screens'
+import { tourFor, type ScreenNote } from './screens'
 import { useNoteBoxes, type FoundNote } from './useNoteBoxes'
 
 interface HelpOverlayProps {
   readonly page: PageKey
   readonly today: string
   readonly isWide: boolean
+  /** 달력 화면이면 지금 보이는 보기 */
+  readonly calendarView: CalView | null
+  /** 설명할 차례가 된 보기로 달력을 바꾼다 */
+  readonly onShowView: (view: CalView) => void
   readonly onClose: () => void
 }
+
+const NO_NOTES: readonly ScreenNote[] = []
 
 const Z = 1100
 const BADGE = 24
@@ -100,15 +107,18 @@ function Callout({ item, index, reserve }: CalloutProps) {
 interface StepBarProps {
   readonly index: number
   readonly total: number
+  /** 달력 보기 이름 (월 보기 등) */
+  readonly label?: string
+  readonly isFirst: boolean
+  readonly isLast: boolean
   readonly isWide: boolean
   readonly onStep: (delta: number) => void
   readonly onClose: () => void
 }
 
 /** 화면 아래 가운데에 고정된 이전·다음 막대. 설명 카드가 움직여도 버튼 자리는 그대로다 */
-function StepBar({ index, total, isWide, onStep, onClose }: StepBarProps) {
+function StepBar({ index, total, label, isFirst, isLast, isWide, onStep, onClose }: StepBarProps) {
   const { token } = theme.useToken()
-  const isLast = index >= total - 1
   return (
     <Flex
       role="toolbar"
@@ -129,10 +139,11 @@ function StepBar({ index, total, isWide, onStep, onClose }: StepBarProps) {
         whiteSpace: 'nowrap',
       }}
     >
-      <Button shape="round" disabled={index <= 0} onClick={() => onStep(-1)}>
+      <Button shape="round" disabled={isFirst} onClick={() => onStep(-1)}>
         이전
       </Button>
       <Typography.Text type="secondary" className="num" style={{ minWidth: 56, textAlign: 'center' }}>
+        {label && <span style={{ marginInlineEnd: 8 }}>{label}</span>}
         {total > 0 ? `${index + 1} / ${total}` : ''}
       </Typography.Text>
       <Button shape="round" type="primary" disabled={isLast} onClick={() => onStep(1)}>
@@ -147,31 +158,59 @@ function StepBar({ index, total, isWide, onStep, onClose }: StepBarProps) {
  * 지금 보고 있는 화면 위에 막을 덮고, 실제 부분마다 번호를 달아 하나씩 설명한다.
  * 켤 때마다 새로 붙인다 (App 에서 열려 있을 때만 그린다)
  */
-export default function HelpOverlay({ page, today, isWide, onClose }: HelpOverlayProps) {
+export default function HelpOverlay({ page, today, isWide, calendarView, onShowView, onClose }: HelpOverlayProps) {
   const { token } = theme.useToken()
-  const notes = useMemo(
-    () => {
-      const shown = SCREEN_NOTES[page].filter((n) => (isWide ? !n.narrowOnly : !n.wideOnly))
-      // 휴대폰의 아래 탭 막대는 화면 맨 아래라 마지막 순서로 둔다
-      return [...shown.filter((n) => !n.narrowOnly), ...shown.filter((n) => n.narrowOnly)]
-    },
-    [page, isWide],
-  )
+  // 설명 순서는 켤 때 보던 보기를 기준으로 정하고, 넘기는 동안에는 바꾸지 않는다
+  const [startView] = useState(calendarView)
+  const sections = useMemo(() => tourFor(page, startView), [page, startView])
+  const [sectionIndex, setSectionIndex] = useState(0)
+  const section = sections[Math.min(sectionIndex, sections.length - 1)]
+  const isShowing = !section.view || section.view === calendarView
+  const notes = useMemo(() => {
+    if (!isShowing) return NO_NOTES
+    const shown = section.notes.filter((n) => (isWide ? !n.narrowOnly : !n.wideOnly))
+    // 휴대폰의 아래 탭 막대는 화면 맨 아래라 마지막 순서로 둔다
+    return [...shown.filter((n) => !n.narrowOnly), ...shown.filter((n) => n.narrowOnly)]
+  }, [section, isShowing, isWide])
+
+  // 설명할 차례의 보기가 아니면 달력을 그 보기로 바꾼다
+  useEffect(() => {
+    if (section.view && section.view !== calendarView) onShowView(section.view)
+  }, [section, calendarView, onShowView])
+
   const { found, relocate } = useNoteBoxes(notes, today)
   const reserve = barReserve(isWide)
   const [active, setActive] = useState(0)
   const current = found[Math.min(active, found.length - 1)]
   const index = Math.min(active, found.length - 1)
+  const isFirstSection = sectionIndex <= 0
+  const isLastSection = sectionIndex >= sections.length - 1
+
+  /** 묶음 끝에서 다음을 누르면 다음 보기의 처음으로, 처음에서 이전을 누르면 앞 보기의 끝으로 간다 */
+  const step = useCallback(
+    (delta: number): void => {
+      const next = index + delta
+      if (next >= 0 && next < found.length) setActive(next)
+      else if (delta > 0 && !isLastSection) {
+        setSectionIndex((i) => i + 1)
+        setActive(0)
+      } else if (delta < 0 && !isFirstSection) {
+        setSectionIndex((i) => i - 1)
+        setActive(Number.MAX_SAFE_INTEGER)
+      }
+    },
+    [index, found.length, isFirstSection, isLastSection],
+  )
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
-      if (e.key === 'ArrowRight') setActive((i) => Math.min(i + 1, found.length - 1))
-      if (e.key === 'ArrowLeft') setActive((i) => Math.max(i - 1, 0))
+      if (e.key === 'ArrowRight') step(1)
+      if (e.key === 'ArrowLeft') step(-1)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose, found.length])
+  }, [onClose, step])
 
   // 고른 곳이 화면 밖이면 애니메이션 없이 바로 스크롤하고, 그리기 전에 상자 자리를 다시 재서 틀이 같이 옮겨 가게 한다
   const scrolledTo = useRef<Element | null>(null)
@@ -187,8 +226,6 @@ export default function HelpOverlay({ page, today, isWide, onClose }: HelpOverla
     window.scrollTo({ top: Math.max(0, top), behavior: 'instant' })
     relocate()
   }, [current, reserve, relocate])
-
-  const step = (delta: number): void => setActive(Math.min(Math.max(index + delta, 0), found.length - 1))
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: Z }} aria-label="사용 설명" onClick={(e) => e.stopPropagation()}>
@@ -244,7 +281,16 @@ export default function HelpOverlay({ page, today, isWide, onClose }: HelpOverla
           이 화면에서 설명할 부분을 찾는 중입니다
         </Typography.Text>
       )}
-      <StepBar index={index} total={found.length} isWide={isWide} onStep={step} onClose={onClose} />
+      <StepBar
+        index={index}
+        total={found.length}
+        label={section.label}
+        isFirst={isFirstSection && index <= 0}
+        isLast={isLastSection && index >= found.length - 1}
+        isWide={isWide}
+        onStep={step}
+        onClose={onClose}
+      />
     </div>,
     document.body,
   )
