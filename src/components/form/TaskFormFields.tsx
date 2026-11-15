@@ -144,12 +144,10 @@ export default function TaskFormFields({ form, requireDue, taskId, onSubmit }: T
           notFoundContent="고를 수 있는 할일이 없습니다"
         />
       </Form.Item>
-      {/* 장기 할일(마감일 필수)로 만들 때는 날짜 미정을 고를 수 없다 */}
-      {!requireDue && (
-        <Form.Item name="unscheduled" valuePropName="checked" style={{ marginBottom: unscheduled ? undefined : 8 }}>
-          <Checkbox>날짜 미정</Checkbox>
-        </Form.Item>
-      )}
+      {/* 새 프로젝트는 마감일을 정하거나 '마감 미정'으로 둔다 (미정이면 날짜도 없이 트리에만 보인다) */}
+      <Form.Item name="unscheduled" valuePropName="checked" style={{ marginBottom: unscheduled ? undefined : 8 }}>
+        <Checkbox>{requireDue ? '마감 미정' : '날짜 미정'}</Checkbox>
+      </Form.Item>
       {!unscheduled && (
         <>
         <div style={{ display: 'flex', gap: 16 }}>

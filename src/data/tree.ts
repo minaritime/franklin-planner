@@ -70,7 +70,7 @@ export function buildTaskTree(tasks: readonly Task[]): TaskNode[] {
   const ids = new Set(live.map((t) => t.id))
   const children = childMap(live)
   const isRoot = (t: Task): boolean =>
-    (!t.parentId || !ids.has(t.parentId)) && (children.has(t.id) || (t.dueDate !== undefined && t.status !== 'done'))
+    (!t.parentId || !ids.has(t.parentId)) && (children.has(t.id) || t.unscheduled === true || (t.dueDate !== undefined && t.status !== 'done'))
   return live
     .filter(isRoot)
     .sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') || siblingOrder(a, b))

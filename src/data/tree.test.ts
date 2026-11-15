@@ -31,6 +31,12 @@ describe('buildTaskTree', () => {
     expect(buildTaskTree([task({ id: 'x', dueDate: '2026-11-20', status: 'done' }), loose])).toEqual([])
   })
 
+  it('날짜도 마감도 없는 맨 위 할일(마감 미정 프로젝트)은 세부 할일이 없어도 뿌리이고, 마감 있는 것 뒤에 온다', () => {
+    const someday = task({ id: 'someday', unscheduled: true })
+    const roots = buildTaskTree([someday, project, plan, loose])
+    expect(roots.map((n) => n.task.id)).toEqual(['p', 'someday'])
+  })
+
   it('부모가 지워졌으면 세부 할일이 뿌리처럼 보인다', () => {
     const roots = buildTaskTree([{ ...project, deleted: true }, plan, character, world])
     expect(roots.map((n) => n.task.id)).toEqual(['plan'])

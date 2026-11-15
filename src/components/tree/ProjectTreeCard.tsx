@@ -70,7 +70,7 @@ function NodeTitle({ data, today, onAdd }: NodeTitleProps) {
         <Flex align="center" gap={8} style={{ fontSize: 12 }}>
           {task.unscheduled && (
             <Tag bordered={false} style={{ marginInlineEnd: 0, fontSize: 11 }}>
-              날짜 미정
+              {data.depth === 1 ? '마감 미정' : '날짜 미정'}
             </Tag>
           )}
           {days !== null && (

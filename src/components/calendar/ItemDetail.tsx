@@ -47,7 +47,7 @@ export default function ItemDetail({ item, task, event, categories, goals, paren
 
   const undated = task?.unscheduled === true
   const rows = [
-    { key: 'date', label: '날짜', children: undated ? '날짜 미정' : dateText(item) },
+    { key: 'date', label: '날짜', children: undated ? (parent ? '날짜 미정' : '마감 미정') : dateText(item) },
     ...(undated ? [] : [{ key: 'time', label: '시간', children: time }]),
     ...(parent ? [{ key: 'parent', label: '상위 할일', children: parent.title }] : []),
     ...(event

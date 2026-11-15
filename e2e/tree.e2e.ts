@@ -63,6 +63,34 @@ test('새 프로젝트에 세부·그 아래 할일을 더하고, 진행률과 �
   await expect(page.getByText('세계관 기획')).toHaveCount(0)
 })
 
+test('마감 미정 프로젝트는 마감 있는 것 아래에 놓이고 마감 일정·달력에는 안 나온다', async ({ page }) => {
+  await page.getByRole('button', { name: '새 프로젝트' }).click()
+  await drawer(page).getByRole('textbox', { name: '할일' }).fill('책 쓰기')
+  await drawer(page).getByRole('checkbox', { name: '마감 미정' }).check()
+  await expect(drawer(page).getByLabel('마감일')).toHaveCount(0)
+  await drawer(page).getByRole('button', { name: '저장' }).click()
+  await expect(drawer(page)).toHaveCount(0)
+
+  await page.getByRole('button', { name: '새 프로젝트' }).click()
+  await drawer(page).getByRole('textbox', { name: '할일' }).fill('발표 준비')
+  await drawer(page).getByLabel('마감일').click()
+  await page.locator('.ant-picker-dropdown .ant-picker-cell[title="2026-11-20"]').click()
+  await drawer(page).getByRole('button', { name: '저장' }).click()
+  await expect(drawer(page)).toHaveCount(0)
+
+  const titles = tree(page).locator('.ant-tree-treenode')
+  await expect(titles.nth(0)).toContainText('발표 준비')
+  await expect(titles.nth(1)).toContainText('책 쓰기')
+  await expect(titles.nth(1)).toContainText('마감 미정')
+  const deadline = page.locator('.ant-card').filter({ has: page.getByText('마감 일정', { exact: true }) })
+  await expect(deadline.getByText('책 쓰기')).toHaveCount(0)
+  await expect(page.locator('[data-calendar-main]').getByText('책 쓰기')).toHaveCount(0)
+
+  // 세부 할일을 더해도 그대로 프로젝트로 남는다
+  await addChild(page, '책 쓰기', '목차 잡기')
+  await expect(tree(page).getByText('0/1')).toBeVisible()
+})
+
 test('세부 할일이 있는 할일을 지울 때 남길지 같이 지울지 묻는다', async ({ page }) => {
   await page.getByRole('button', { name: '새 프로젝트' }).click()
   await drawer(page).getByRole('textbox', { name: '할일' }).fill('이사 준비')
