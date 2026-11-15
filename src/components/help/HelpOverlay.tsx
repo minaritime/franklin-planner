@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { createPortal } from 'react-dom'
 import type { CalView } from '../../data/calendarItems'
 import type { PageKey } from '../SideNav'
-import { placeCallout, type Rect, type Size } from './placement'
+import { placeCallout, unionRect, type Rect, type Size } from './placement'
 import { startSectionOf, tourFor, type ScreenNote } from './screens'
 import { useNoteBoxes, type FoundNote } from './useNoteBoxes'
 
@@ -53,6 +53,22 @@ function badgePosition(box: Rect): CSSProperties {
   const left = onTop ? box.left + box.width / 2 - BADGE / 2 : box.left - BADGE / 2
   const top = onTop ? box.top - BADGE - 4 : box.top - BADGE / 2
   return { left: Math.max(2, left), top: Math.max(2, top) }
+}
+
+/** 창이 아닌 스크롤 칸 안에서 element 가 가려져 있으면 그 칸을 움직인다. 움직였으면 true */
+function revealInScrollParents(element: Element): boolean {
+  let moved = false
+  for (let p = element.parentElement; p && p !== document.body && p !== document.documentElement; p = p.parentElement) {
+    const { overflowY } = getComputedStyle(p)
+    if ((overflowY !== 'auto' && overflowY !== 'scroll') || p.scrollHeight <= p.clientHeight) continue
+    const r = element.getBoundingClientRect()
+    const c = p.getBoundingClientRect()
+    if (r.top < c.top) p.scrollTop -= c.top - r.top
+    else if (r.bottom > c.bottom) p.scrollTop += Math.min(r.bottom - c.bottom, r.top - c.top)
+    else continue
+    moved = true
+  }
+  return moved
 }
 
 /** 이전·다음 막대에 가리지 않고 다 보이는지 */
@@ -224,11 +240,18 @@ export default function HelpOverlay({ page, today, isWide, calendarView, onShowV
     const element = current?.elements[0] ?? null
     if (element === scrolledTo.current) return
     scrolledTo.current = element
-    if (!element || !current || isInView(current.box, reserve)) return
+    if (!element || !current) return
+    // 따로 스크롤되는 칸(달력 왼쪽 칸 등) 안에 가려져 있으면 그 칸부터 움직인다
+    const movedInner = revealInScrollParents(element)
+    const box = movedInner ? (unionRect(current.elements.map((el) => el.getBoundingClientRect())) ?? current.box) : current.box
+    if (isInView(box, reserve)) {
+      if (movedInner) relocate()
+      return
+    }
     // 남는 높이에 들어가면 가운데로, 그보다 크면 윗부분이 보이게 위쪽에 맞춘다
     const room = window.innerHeight - reserve
-    const offset = current.box.height <= room - TOP_GAP * 2 ? (room - current.box.height) / 2 : TOP_GAP
-    const top = window.scrollY + current.box.top - offset
+    const offset = box.height <= room - TOP_GAP * 2 ? (room - box.height) / 2 : TOP_GAP
+    const top = window.scrollY + box.top - offset
     window.scrollTo({ top: Math.max(0, top), behavior: 'instant' })
     relocate()
   }, [current, reserve, relocate])

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { occursOn } from '../../data/recurrence'
 import { overdueTasks, periodTasksOn, tasksForDay } from '../../data/logic'
+import { buildTaskTree, treeProgress } from '../../data/tree'
 import { buildSampleData, sampleAnchor } from './sampleData'
 
 const DAY = '2026-11-12'
@@ -21,6 +22,14 @@ describe('buildSampleData', () => {
   it('못 끝낸 할일과 진행 중인 장기 할일이 보인다', () => {
     expect(overdueTasks(data.tasks, DAY).length).toBeGreaterThan(0)
     expect(periodTasksOn(data.tasks, DAY).some((t) => t.date !== DAY)).toBe(true)
+  })
+
+  it('세 단짜리 할일 트리가 있고, 날짜 미정은 그날 목록에 안 나온다', () => {
+    const root = buildTaskTree(data.tasks).find((n) => n.task.title === '기말 문제 만들기')!
+    expect(root).toBeDefined()
+    expect(root.children[1].children[0].task.unscheduled).toBe(true)
+    expect(treeProgress(root)).toEqual({ done: 1, total: 2 })
+    expect(dayTasks.some((t) => t.unscheduled)).toBe(false)
   })
 
   it('그날 일정·메모·목표·가치가 있다', () => {

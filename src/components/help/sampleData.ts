@@ -36,6 +36,10 @@ export function buildSampleData(day: string): PlannerData {
       startDate: addDays(day, -2),
       dueDate: addDays(day, 4),
     }),
+    // 할일 트리: 기말 문제 만들기 > 1단원(끝남)·2단원 > 서술형(날짜 미정)
+    task('long-1', { title: '1단원 문제', priority: 'A', order: 3, date: yesterday, status: 'done', parentId: 'sample-long', categoryId: WORK }),
+    task('long-2', { title: '2단원 문제', priority: 'B', order: 3, date: day, parentId: 'sample-long', categoryId: WORK }),
+    task('long-2a', { title: '서술형 문제', priority: 'B', order: 1, date: day, parentId: 'sample-long-2', unscheduled: true, categoryId: WORK }),
     task('blog1', { title: '블로그 글 올리기', priority: 'B', order: 1, date: addDays(day, -3), status: 'done', goalId: GOAL_ID }),
     task('blog2', { title: '학원 소개 사진 찍기', priority: 'C', order: 1, date: addDays(day, -5), status: 'done', goalId: GOAL_ID }),
   ]

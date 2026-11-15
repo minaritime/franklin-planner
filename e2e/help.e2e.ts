@@ -66,10 +66,10 @@ test('달력 설명서 번호는 월 보기 기준으로 고정이고, 주 보�
   await page.goto('./#/calendar/week/2026-11-18')
   await page.getByRole('button', { name: '사용 설명서' }).first().click()
   const bar = page.getByRole('toolbar', { name: '설명 넘기기' })
-  // 월 보기 묶음(월 2 + 공통 10) 다음이 주 보기 첫 설명
+  // 월 보기 묶음(월 2 + 공통 11) 다음이 주 보기 첫 설명
   await expect(page.getByRole('dialog', { name: '요일' })).toBeVisible()
-  await expect(bar).toContainText('13 / 21')
-  await expect(page.getByRole('button', { name: '13. 요일' })).toBeVisible()
+  await expect(bar).toContainText('14 / 22')
+  await expect(page.getByRole('button', { name: '14. 요일' })).toBeVisible()
 
   // 다음으로 끝까지: 일, 목록 순
   const views: string[] = []
@@ -79,14 +79,14 @@ test('달력 설명서 번호는 월 보기 기준으로 고정이고, 주 보�
     if (view && views.at(-1) !== view) views.push(view)
   }
   expect(views).toEqual(['week', 'day', 'agenda'])
-  await expect(bar).toContainText('21 / 21')
+  await expect(bar).toContainText('22 / 22')
 
   // 이전으로 처음까지: 월 보기로 바뀌고 1번이 나온다
   for (let i = 0; i < 40 && !(await bar.getByRole('button', { name: '이전' }).isDisabled()); i++) {
     await bar.getByRole('button', { name: '이전' }).click()
   }
   await expect(page).toHaveURL(/#\/calendar\/month\/2026-11-18$/)
-  await expect(bar).toContainText('1 / 21')
+  await expect(bar).toContainText('1 / 22')
   await expect(page.getByRole('dialog', { name: '날짜 칸' })).toBeVisible()
 
   await bar.getByRole('button', { name: '설명 끝내기' }).click()
@@ -98,13 +98,13 @@ test('달력 설명서를 일·목록 보기에서 켜면 그 보기 설명 번�
   await page.goto('./#/calendar/day/2026-11-18')
   await page.getByRole('button', { name: '사용 설명서' }).first().click()
   await expect(page.getByRole('dialog', { name: '종일 칸' })).toBeVisible()
-  await expect(bar).toContainText('17 / 21')
+  await expect(bar).toContainText('18 / 22')
   await bar.getByRole('button', { name: '설명 끝내기' }).click()
 
   await page.goto('./#/calendar/agenda/2026-11-18')
   await page.getByRole('button', { name: '사용 설명서' }).first().click()
   await expect(page.getByRole('dialog', { name: '날짜별 목록' })).toBeVisible()
-  await expect(bar).toContainText('20 / 21')
+  await expect(bar).toContainText('21 / 22')
 })
 
 test('설명서에서 점선 칸을 누르면 그 칸 설명으로 바로 간다 (안쪽 작은 칸이 먼저 눌린다)', async ({ page }) => {

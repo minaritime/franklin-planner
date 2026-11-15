@@ -1,5 +1,6 @@
 import type { Category, DayNote, Goal, PlanEvent, PlannerData, Repeat, Task } from './types'
 import { CATEGORY_COLORS } from './types'
+import { cutBadParents } from './tree'
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -36,6 +37,8 @@ export function isTask(v: unknown): v is Task {
     optTime(v.startTime) &&
     optTime(v.endTime) &&
     optStr(v.goalId) &&
+    optStr(v.parentId) &&
+    optBool(v.unscheduled) &&
     optStr(v.categoryId) &&
     optStr(v.delegatedTo) &&
     optDate(v.forwardedTo) &&
@@ -123,7 +126,7 @@ export function parsePlannerData(value: unknown): PlannerData | null {
   }
   return {
     version: 1,
-    tasks: tasks.filter(isTask),
+    tasks: cutBadParents(tasks.filter(isTask)),
     events: events.filter(isEvent),
     notes: notes.filter(isNote),
     goals: goals.filter(isGoal),

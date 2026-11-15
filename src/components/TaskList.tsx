@@ -25,13 +25,16 @@ interface TaskListProps {
   readonly day: string
   readonly onEdit: (task: Task) => void
   readonly onAction: (action: TaskAction) => void
+  readonly onRemove: (task: Task) => void
+  /** 상위 할일 이름을 찾을 전체 할일 */
+  readonly allTasks: readonly Task[]
   /** 다른 날 시작해 기간 안에 든 장기 할일. 각 묶음 맨 끝에 붙고 끌어서 순서를 바꾸지 못한다 */
   readonly carried: readonly Task[]
 }
 
 const GROUP_LABEL = Object.fromEntries(PRIORITY_OPTIONS.map((o) => [o.value, o.label])) as Record<Priority, string>
 
-function Group({ priority, tasks, carried, goals, day, onEdit, onAction }: TaskListProps & { priority: Priority }) {
+function Group({ priority, tasks, carried, goals, day, onEdit, onAction, onRemove, allTasks }: TaskListProps & { priority: Priority }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
@@ -54,6 +57,8 @@ function Group({ priority, tasks, carried, goals, day, onEdit, onAction }: TaskL
       day={day}
       onEdit={onEdit}
       onAction={onAction}
+      onRemove={onRemove}
+      parent={t.parentId ? allTasks.find((p) => p.id === t.parentId && !p.deleted) : undefined}
       displayOrder={i + 1}
       carried={isCarried}
     />

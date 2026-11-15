@@ -1,9 +1,11 @@
-import { DatePicker, Form, Input, Segmented, Select, type FormInstance } from 'antd'
+import { Checkbox, DatePicker, Form, Input, Segmented, Select, TreeSelect, type FormInstance } from 'antd'
+import { useMemo } from 'react'
 import dayjs from 'dayjs'
 import type { TaskInput } from '../../data/actions'
 import { liveGoals } from '../../data/logic'
 import type { QuickEntry } from '../../data/quickParse'
 import { usePlanner } from '../../data/store'
+import { buildTaskTree, canBeParent, type TaskNode } from '../../data/tree'
 import type { Priority, Task } from '../../data/types'
 import { fromDayjs, toDayjs } from '../../utils/format'
 import CategorySelect from '../calendar/CategorySelect'
@@ -17,6 +19,8 @@ export interface TaskFormValues {
   dueDate?: dayjs.Dayjs | null
   time?: TimeRange | null
   goalId?: string
+  parentId?: string
+  unscheduled?: boolean
   note?: string
 }
 
@@ -31,6 +35,8 @@ export interface TaskDefaults {
   readonly start?: string
   readonly end?: string
   readonly categoryId?: string
+  readonly parentId?: string
+  readonly unscheduled?: boolean
 }
 
 export function taskInitialValues(task: Task | null, defaults: TaskDefaults): TaskFormValues {
@@ -44,6 +50,8 @@ export function taskInitialValues(task: Task | null, defaults: TaskDefaults): Ta
     dueDate: toDayjs(task?.dueDate) ?? null,
     time: start && end ? [dayjs(start, TIME_FMT), dayjs(end, TIME_FMT)] : null,
     goalId: task?.goalId,
+    parentId: task ? task.parentId : defaults.parentId,
+    unscheduled: task ? task.unscheduled === true : defaults.unscheduled === true,
     note: task?.note ?? '',
   }
 }
@@ -59,6 +67,8 @@ export function toTaskInput(v: TaskFormValues, fallbackDate: string): TaskInput 
     startTime: v.time ? v.time[0].format(TIME_FMT) : undefined,
     endTime: v.time ? v.time[1].format(TIME_FMT) : undefined,
     goalId: v.goalId,
+    parentId: v.parentId,
+    unscheduled: v.unscheduled === true,
   }
 }
 
@@ -76,14 +86,35 @@ interface TaskFormFieldsProps {
   readonly form: FormInstance<TaskFormValues>
   /** 새로 만드는 '장기 할일'이면 마감일이 꼭 있어야 한다 */
   readonly requireDue: boolean
+  /** 고치는 할일 id (상위 할일 목록에서 자기와 자기 아래를 막는다) */
+  readonly taskId?: string
   readonly onSubmit: () => void
 }
 
+interface ParentOption {
+  readonly value: string
+  readonly title: string
+  readonly disabled: boolean
+  readonly children: ParentOption[]
+}
+
+/** 상위 할일로 고를 수 있는 것 = 할일 트리에 있는 할일. 3단을 넘거나 자기 아래면 고를 수 없다 */
+function parentOptions(nodes: readonly TaskNode[], tasks: readonly Task[], taskId: string | undefined): ParentOption[] {
+  return nodes.map((n) => ({
+    value: n.task.id,
+    title: n.task.title,
+    disabled: !canBeParent(tasks, taskId, n.task),
+    children: parentOptions(n.children, tasks, taskId),
+  }))
+}
+
 /** 할일 칸들. 하루 화면의 창과 달력의 오른쪽 창이 함께 쓴다 */
-export default function TaskFormFields({ form, requireDue, onSubmit }: TaskFormFieldsProps) {
-  const { goals } = usePlanner()
+export default function TaskFormFields({ form, requireDue, taskId, onSubmit }: TaskFormFieldsProps) {
+  const { goals, tasks } = usePlanner()
   const date = Form.useWatch('date', form)
   const dueDate = Form.useWatch('dueDate', form)
+  const unscheduled = Form.useWatch('unscheduled', form) === true
+  const parents = useMemo(() => parentOptions(buildTaskTree(tasks), tasks, taskId), [tasks, taskId])
 
   return (
     <>
@@ -102,28 +133,49 @@ export default function TaskFormFields({ form, requireDue, onSubmit }: TaskFormF
       <Form.Item name="categoryId" label="분류">
         <CategorySelect />
       </Form.Item>
-      <div style={{ display: 'flex', gap: 16 }}>
-        <Form.Item name="date" label={dueDate ? '시작일' : '날짜'} style={{ flex: 1 }} rules={[{ required: true, message: '날짜를 골라주세요' }]}>
-          <DatePicker allowClear={false} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item
-          name="dueDate"
-          label="마감일"
-          style={{ flex: 1 }}
-          rules={[
-            { required: requireDue, message: '마감일을 골라주세요' },
-            {
-              validator: (_, value: dayjs.Dayjs | null) =>
-                !value || !date || !value.isBefore(date, 'day') ? Promise.resolve() : Promise.reject(new Error('하는 날보다 앞설 수 없습니다')),
-            },
-          ]}
-        >
-          <DatePicker placeholder="없음" style={{ width: '100%' }} disabledDate={(d) => (date ? d.isBefore(date, 'day') : false)} />
-        </Form.Item>
-      </div>
-      <Form.Item name="time" label="시간" rules={[{ validator: validRange }]}>
-        <TimeRangeField />
+      <Form.Item name="parentId" label="상위 할일">
+        <TreeSelect
+          allowClear
+          showSearch
+          treeDefaultExpandAll
+          treeNodeFilterProp="title"
+          placeholder="없음"
+          treeData={parents}
+          notFoundContent="고를 수 있는 할일이 없습니다"
+        />
       </Form.Item>
+      {/* 장기 할일(마감일 필수)로 만들 때는 날짜 미정을 고를 수 없다 */}
+      {!requireDue && (
+        <Form.Item name="unscheduled" valuePropName="checked" style={{ marginBottom: unscheduled ? undefined : 8 }}>
+          <Checkbox>날짜 미정</Checkbox>
+        </Form.Item>
+      )}
+      {!unscheduled && (
+        <>
+        <div style={{ display: 'flex', gap: 16 }}>
+          <Form.Item name="date" label={dueDate ? '시작일' : '날짜'} style={{ flex: 1 }} rules={[{ required: true, message: '날짜를 골라주세요' }]}>
+            <DatePicker allowClear={false} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item
+            name="dueDate"
+            label="마감일"
+            style={{ flex: 1 }}
+            rules={[
+              { required: requireDue, message: '마감일을 골라주세요' },
+              {
+                validator: (_, value: dayjs.Dayjs | null) =>
+                  !value || !date || !value.isBefore(date, 'day') ? Promise.resolve() : Promise.reject(new Error('하는 날보다 앞설 수 없습니다')),
+              },
+            ]}
+          >
+            <DatePicker placeholder="없음" style={{ width: '100%' }} disabledDate={(d) => (date ? d.isBefore(date, 'day') : false)} />
+          </Form.Item>
+        </div>
+        <Form.Item name="time" label="시간" rules={[{ validator: validRange }]}>
+          <TimeRangeField />
+        </Form.Item>
+        </>
+      )}
       <Form.Item name="goalId" label="목표">
         <Select
           allowClear

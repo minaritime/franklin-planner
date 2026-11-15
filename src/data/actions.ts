@@ -9,6 +9,7 @@ import {
   setTaskStatus,
 } from './logic'
 import { commit } from './store'
+import { descendantIds, liftChildren } from './tree'
 import { deleteOccurrence, editOccurrence, moveTaskBy, nextCategoryColor, type EventFields, type SeriesScope, type TaskTime } from './eventOps'
 import type { Category, Goal, Priority, Task, TaskStatus } from './types'
 
@@ -22,9 +23,19 @@ export interface TaskInput {
   readonly categoryId?: string
   readonly startTime?: string
   readonly endTime?: string
+  readonly parentId?: string
+  /** 날짜 미정 (마감일·시간은 저장하지 않는다) */
+  readonly unscheduled?: boolean
 }
 
-export function addTask(input: TaskInput): void {
+/** 날짜 미정이면 마감일·시간을 비운다 */
+function normalize(input: TaskInput): TaskInput {
+  if (!input.unscheduled) return { ...input, unscheduled: undefined }
+  return { ...input, dueDate: undefined, startTime: undefined, endTime: undefined }
+}
+
+export function addTask(raw: TaskInput): void {
+  const input = normalize(raw)
   commit((d) => {
     const task: Task = {
       ...input,
@@ -40,12 +51,13 @@ export function addTask(input: TaskInput): void {
 
 const earlier = (a: string, b: string): string => (a < b ? a : b)
 
-export function editTask(id: string, input: TaskInput): void {
+export function editTask(id: string, raw: TaskInput): void {
+  const input = normalize(raw)
   commit((d) => ({
     ...d,
     tasks: d.tasks.map((t) => {
       if (t.id !== id) return t
-      const moved = t.date !== input.date || t.priority !== input.priority
+      const moved = t.date !== input.date || t.priority !== input.priority || Boolean(t.unscheduled) !== Boolean(input.unscheduled)
       return {
         ...t,
         ...input,
@@ -57,11 +69,16 @@ export function editTask(id: string, input: TaskInput): void {
   }))
 }
 
-export function removeTask(id: string): void {
-  commit((d) => ({
-    ...d,
-    tasks: d.tasks.map((t) => (t.id === id ? { ...t, deleted: true, updatedAt: Date.now() } : t)),
-  }))
+/** 세부 할일이 있을 때: 'all' 은 아래까지 다 지우고, 'lift' 는 세부 할일을 한 단계 위로 올린다 */
+export type ChildrenOnRemove = 'all' | 'lift'
+
+export function removeTask(id: string, children: ChildrenOnRemove = 'lift'): void {
+  commit((d) => {
+    const now = Date.now()
+    const gone = new Set([id, ...(children === 'all' ? descendantIds(d.tasks, id) : [])])
+    const tasks = children === 'lift' ? liftChildren(d.tasks, id, now) : d.tasks
+    return { ...d, tasks: tasks.map((t) => (gone.has(t.id) ? { ...t, deleted: true, updatedAt: now } : t)) }
+  })
 }
 
 export function changeStatus(id: string, status: TaskStatus): void {

@@ -1,7 +1,7 @@
 import { Card, Flex, theme, Typography } from 'antd'
 import { taskStart } from '../../data/calendar'
 import { itemOfTask, type CalItem } from '../../data/calendarItems'
-import { dDay, formatDDay, isActiveInstance } from '../../data/logic'
+import { dDay, formatDDay, isActiveInstance, isScheduled } from '../../data/logic'
 import { usePlanner } from '../../data/store'
 import type { Task } from '../../data/types'
 import { PRIORITY_COLOR_TOKEN } from '../../theme'
@@ -16,7 +16,7 @@ interface DeadlineCardProps {
 /** 지난 마감 먼저, 그다음 가까운 마감 순 */
 function openDeadlines(tasks: readonly Task[]): Task[] {
   return tasks
-    .filter((t) => isActiveInstance(t) && t.dueDate !== undefined && (t.status === 'todo' || t.status === 'delegated'))
+    .filter((t) => isActiveInstance(t) && isScheduled(t) && t.dueDate !== undefined && (t.status === 'todo' || t.status === 'delegated'))
     .sort((a, b) => a.dueDate!.localeCompare(b.dueDate!))
 }
 

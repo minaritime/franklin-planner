@@ -39,7 +39,7 @@ export default function TaskForm({ open, task, defaultDate, onClose }: TaskFormP
       width={480}
     >
       <Form form={form} layout="vertical" requiredMark={false} style={{ marginTop: 16 }}>
-        <TaskFormFields form={form} requireDue={task === null} onSubmit={() => void submit()} />
+        <TaskFormFields form={form} requireDue={task === null} taskId={task?.id} onSubmit={() => void submit()} />
       </Form>
     </Modal>
   )

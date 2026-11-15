@@ -1,5 +1,5 @@
 import { isMultiDay, taskStart } from './calendar'
-import { addDays } from './logic'
+import { addDays, isScheduled } from './logic'
 import { expandEvents } from './recurrence'
 import type { Category, PlanEvent, PlannerData, Priority, Task, TaskStatus } from './types'
 import { PRIORITIES } from './types'
@@ -46,7 +46,7 @@ export interface ItemFilter {
   readonly query: string
 }
 
-const isShownTask = (t: Task): boolean => !t.deleted && t.status !== 'forwarded'
+const isShownTask = (t: Task): boolean => !t.deleted && t.status !== 'forwarded' && isScheduled(t)
 
 function taskItem(t: Task, categoryId: string | undefined): CalItem {
   const long = isMultiDay(t)

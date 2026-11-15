@@ -10,6 +10,10 @@ interface ItemDetailProps {
   readonly event?: PlanEvent
   readonly categories: readonly Category[]
   readonly goals: readonly Goal[]
+  /** 상위 할일 (할일 트리) */
+  readonly parent?: Task
+  /** 세부 할일이 있으면 지울 때 따로 묻으므로 '지울까요?' 확인을 건너뛴다 */
+  readonly hasChildren?: boolean
   readonly onEdit: () => void
   readonly onDelete: () => void
   readonly onToggleDone: () => void
@@ -36,14 +40,16 @@ function dateText(item: CalItem): string {
 }
 
 /** 오른쪽 창의 읽기 화면 */
-export default function ItemDetail({ item, task, event, categories, goals, onEdit, onDelete, onToggleDone, onOpenDay }: ItemDetailProps) {
+export default function ItemDetail({ item, task, event, categories, goals, parent, hasChildren = false, onEdit, onDelete, onToggleDone, onOpenDay }: ItemDetailProps) {
   const category = liveCategories(categories).find((c) => c.id === (task?.categoryId ?? event?.categoryId))
   const goal = task?.goalId ? goals.find((g) => g.id === task.goalId && !g.deleted) : undefined
   const time = item.allDay ? '종일' : `${item.start}–${item.end}`
 
+  const undated = task?.unscheduled === true
   const rows = [
-    { key: 'date', label: '날짜', children: dateText(item) },
-    { key: 'time', label: '시간', children: time },
+    { key: 'date', label: '날짜', children: undated ? '날짜 미정' : dateText(item) },
+    ...(undated ? [] : [{ key: 'time', label: '시간', children: time }]),
+    ...(parent ? [{ key: 'parent', label: '상위 할일', children: parent.title }] : []),
     ...(event
       ? [
           { key: 'repeat', label: '반복', children: repeatLabel(event.repeat, event.date) },
@@ -71,16 +77,16 @@ export default function ItemDetail({ item, task, event, categories, goals, onEdi
         {task && <Tag style={{ margin: 0 }}>{STATUS_LABEL[task.status]}</Tag>}
         {item.recurring && <Tag style={{ margin: 0 }}>반복</Tag>}
       </Flex>
-      <Descriptions column={1} size="small" items={rows} styles={{ label: { width: 72 } }} />
+      <Descriptions column={1} size="small" items={rows} styles={{ label: { width: 80 } }} />
       <Flex wrap gap={8}>
         {task && (task.status === 'todo' || task.status === 'done') && (
           <Button type="primary" onClick={onToggleDone}>
             {task.status === 'done' ? '완료 취소' : '완료'}
           </Button>
         )}
-        {task && <Button onClick={onOpenDay}>계획 화면</Button>}
+        {task && !undated && <Button onClick={onOpenDay}>계획 화면</Button>}
         <Button onClick={onEdit}>수정</Button>
-        {item.recurring ? (
+        {item.recurring || hasChildren ? (
           <Button danger onClick={onDelete}>
             삭제
           </Button>

@@ -58,7 +58,7 @@ test('일정을 추가하고 메모가 새로고침 뒤에도 남는다', async 
 test('장기 할일을 만들면 달력에 막대로 보이고 눌러서 고칠 수 있다', async ({ page }) => {
   await page.getByRole('button', { name: '장기 할일 추가' }).click()
   const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('할일').fill('발표 준비')
+  await dialog.getByLabel('할일', { exact: true }).fill('발표 준비')
   await dialog.getByRole('button', { name: '저장' }).click()
   await expect(dialog.getByText('마감일을 골라주세요')).toBeVisible()
 
@@ -76,7 +76,7 @@ test('장기 할일을 만들면 달력에 막대로 보이고 눌러서 고칠 
   await page.getByRole('menuitem', { name: '달력' }).click()
   const bar = page.getByRole('button', { name: /발표 준비/ })
   await expect(bar.first()).toBeVisible()
-  await expect(page.getByText('D-1')).toBeVisible()
+  await expect(page.locator('.ant-card', { hasText: '마감 일정' }).getByText('D-1')).toBeVisible()
   await bar.first().click()
   const drawer = page.locator('.ant-drawer-open')
   await drawer.getByRole('button', { name: '수정' }).click()
@@ -163,7 +163,7 @@ test('수정 창에서 시간을 정하면 시간표에 올라가고 지우면 �
 test('장기 할일은 마감일까지 매일 우선 업무 목록에 나오고, 다른 날에서 체크해도 완료된다', async ({ page }) => {
   await page.getByRole('button', { name: '장기 할일 추가' }).click()
   const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('할일').fill('기말 문제 만들기')
+  await dialog.getByLabel('할일', { exact: true }).fill('기말 문제 만들기')
   await dialog.getByLabel('마감일').click()
   const due = await page.evaluate(() => {
     const t = new Date()

@@ -30,18 +30,21 @@ export function newId(): string {
 
 const isLive = (t: Task): boolean => !t.deleted
 
+/** 하루·달력에 나오는 할일인지 (날짜 미정은 할일 트리에만 보인다) */
+export const isScheduled = (t: Task): boolean => t.unscheduled !== true
+
 function byPriorityThenOrder(a: Task, b: Task): number {
   const p = PRIORITIES.indexOf(a.priority) - PRIORITIES.indexOf(b.priority)
   return p !== 0 ? p : a.order - b.order
 }
 
 export function tasksForDay(tasks: readonly Task[], date: string): Task[] {
-  return tasks.filter((t) => isLive(t) && t.date === date).sort(byPriorityThenOrder)
+  return tasks.filter((t) => isLive(t) && isScheduled(t) && t.date === date).sort(byPriorityThenOrder)
 }
 
 export function nextOrder(tasks: readonly Task[], date: string, priority: Priority): number {
   const orders = tasks
-    .filter((t) => isLive(t) && t.date === date && t.priority === priority)
+    .filter((t) => isLive(t) && isScheduled(t) && t.date === date && t.priority === priority)
     .map((t) => t.order)
   return orders.length === 0 ? 1 : Math.max(...orders) + 1
 }
@@ -91,7 +94,11 @@ export function forwardTask(
     delegatedTo: undefined,
     updatedAt: now,
   }
-  return [...updateTask(tasks, id, { status: 'forwarded', forwardedTo: toDate }, now), copy]
+  // 세부 할일은 살아 있는 사본 아래로 옮겨 단다 (트리가 미룬 원본을 따라가지 않게)
+  const repointed = updateTask(tasks, id, { status: 'forwarded', forwardedTo: toDate }, now).map((t) =>
+    t.parentId === id ? { ...t, parentId: copy.id, updatedAt: now } : t,
+  )
+  return [...repointed, copy]
 }
 
 export function bringToDay(
@@ -115,7 +122,7 @@ export function reorderGroup(tasks: readonly Task[], orderedIds: readonly string
 
 export function overdueTasks(tasks: readonly Task[], today: string): Task[] {
   const isOverdue = (t: Task): boolean =>
-    isLive(t) && t.status === 'todo' && t.date < today && (t.dueDate === undefined || t.dueDate < today)
+    isLive(t) && isScheduled(t) && t.status === 'todo' && t.date < today && (t.dueDate === undefined || t.dueDate < today)
   return tasks.filter(isOverdue).sort((a, b) =>
     a.date === b.date ? byPriorityThenOrder(a, b) : a.date.localeCompare(b.date),
   )
@@ -128,7 +135,7 @@ export function isActiveInstance(t: Task): boolean {
 
 export function periodTasksOn(tasks: readonly Task[], date: string): Task[] {
   return tasks.filter(
-    (t) => isActiveInstance(t) && t.dueDate !== undefined && (t.startDate ?? t.date) <= date && date <= t.dueDate,
+    (t) => isActiveInstance(t) && isScheduled(t) && t.dueDate !== undefined && (t.startDate ?? t.date) <= date && date <= t.dueDate,
   )
 }
 

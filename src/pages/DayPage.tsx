@@ -10,6 +10,7 @@ import { categoryColor, chipColors } from '../components/calendar/colors'
 import TaskActionModal, { type TaskAction } from '../components/TaskActionModal'
 import TaskForm from '../components/TaskForm'
 import TaskList from '../components/TaskList'
+import { useRemoveTask } from '../components/tree/useRemoveTask'
 import Timeline, { type TimelineBlock } from '../components/Timeline'
 import { bringOverdue } from '../data/actions'
 import { buildItems } from '../data/calendarItems'
@@ -90,6 +91,7 @@ function OverdueNotice({ tasks, today }: { tasks: readonly Task[]; today: string
 
 export default function DayPage({ date }: DayPageProps) {
   const data = usePlanner()
+  const [removeWithAsk, removeDialog] = useRemoveTask()
   const today = useToday()
   const [form, setForm] = useState<FormState>({ open: false })
   const [action, setAction] = useState<TaskAction | null>(null)
@@ -167,7 +169,10 @@ export default function DayPage({ date }: DayPageProps) {
               day={date}
               onEdit={(task) => setForm({ open: true, task })}
               onAction={setAction}
+              onRemove={(task) => void removeWithAsk(task.id)}
+              allTasks={data.tasks}
             />
+            {removeDialog}
           </Card>
         </Col>
         <Col xs={24} lg={9}>

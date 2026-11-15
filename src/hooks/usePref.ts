@@ -37,6 +37,7 @@ export function usePref<T>(key: string, fallback: T, isValid: (v: unknown) => v 
 
 export const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string')
 export const isWeekStart = (v: unknown): v is 0 | 1 => v === 0 || v === 1
+export const isStringArrayOrNull = (v: unknown): v is string[] | null => v === null || isStringArray(v)
 export const isOptionalString = (v: unknown): v is string | null => v === null || typeof v === 'string'
 
 export const PREF_KEYS = {
@@ -44,4 +45,5 @@ export const PREF_KEYS = {
   weekStart: 'planner:week-start',
   lastCategory: 'planner:last-category',
   calendarView: 'planner:calendar-view',
+  projectTreeExpanded: 'planner:project-tree-expanded',
 } as const

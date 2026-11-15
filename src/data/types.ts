@@ -19,6 +19,10 @@ export interface Task {
   readonly startTime?: string
   readonly endTime?: string
   readonly goalId?: string
+  /** 상위 할일 (할일 트리). 부모를 지웠거나 아직 동기화 전이면 뿌리처럼 보인다 */
+  readonly parentId?: string
+  /** 날짜 미정: 할일 트리에만 보이고 하루·달력·못 끝낸 할일에는 안 나온다. date 는 만든 날로 남는다 */
+  readonly unscheduled?: boolean
   /** 사용자가 만든 분류. 없거나 지운 분류면 '분류 없음' */
   readonly categoryId?: string
   readonly delegatedTo?: string

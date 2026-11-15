@@ -2,7 +2,7 @@ import { HolderOutlined, MoreOutlined } from '@ant-design/icons'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Button, Dropdown, Flex, Tag, theme, Typography, type MenuProps } from 'antd'
-import { changeStatus, removeTask, rotatePriority } from '../data/actions'
+import { changeStatus, rotatePriority } from '../data/actions'
 import { dDay, formatDDay } from '../data/logic'
 import type { Goal, Task } from '../data/types'
 import { PRIORITY_COLOR_TOKEN } from '../theme'
@@ -17,6 +17,9 @@ interface TaskRowProps {
   readonly day: string
   readonly onEdit: (task: Task) => void
   readonly onAction: (action: TaskAction) => void
+  readonly onRemove: (task: Task) => void
+  /** 상위 할일 (할일 트리). 있으면 이름을 작게 붙여 왜 하는 일인지 보이게 한다 */
+  readonly parent?: Task
   /** 목록에 보이는 번호 (그날 묶음 안의 순서) */
   readonly displayOrder: number
   /** 다른 날 시작한 장기 할일이 그날 목록에 같이 나온 줄. 순서는 시작일 기준이라 끌어서 바꾸지 못한다 */
@@ -33,7 +36,7 @@ function DueLabel({ dueDate, day, finished }: { dueDate: string; day: string; fi
   )
 }
 
-function buildMenu(task: Task, onEdit: TaskRowProps['onEdit'], onAction: TaskRowProps['onAction']): MenuProps {
+function buildMenu(task: Task, onEdit: TaskRowProps['onEdit'], onAction: TaskRowProps['onAction'], onRemove: TaskRowProps['onRemove']): MenuProps {
   const isTodo = task.status === 'todo'
   const items: MenuProps['items'] = [
     { key: 'edit', label: '수정' },
@@ -52,12 +55,12 @@ function buildMenu(task: Task, onEdit: TaskRowProps['onEdit'], onAction: TaskRow
     forward: () => onAction({ kind: 'forward', task }),
     delegate: () => onAction({ kind: 'delegate', task }),
     cancel: () => changeStatus(task.id, 'cancelled'),
-    delete: () => removeTask(task.id),
+    delete: () => onRemove(task),
   }
   return { items, onClick: ({ key }) => handlers[key]?.() }
 }
 
-export default function TaskRow({ task, goal, day, onEdit, onAction, displayOrder, carried = false }: TaskRowProps) {
+export default function TaskRow({ task, goal, day, onEdit, onAction, onRemove, parent, displayOrder, carried = false }: TaskRowProps) {
   const { token } = theme.useToken()
   const sortable = useSortable({ id: task.id, disabled: carried })
   const finished = task.status !== 'todo'
@@ -140,6 +143,11 @@ export default function TaskRow({ task, goal, day, onEdit, onAction, displayOrde
               장기
             </Tag>
           )}
+          {parent && (
+            <Tag bordered={false} color="purple" style={{ marginInlineEnd: 0, fontSize: 12 }} aria-label={`상위 할일 ${parent.title}`}>
+              {parent.title}
+            </Tag>
+          )}
           {task.status === 'forwarded' && task.forwardedTo && (
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>→ {shortDate(task.forwardedTo)}</Typography.Text>
           )}
@@ -162,7 +170,7 @@ export default function TaskRow({ task, goal, day, onEdit, onAction, displayOrde
           </Typography.Text>
         )}
       </Flex>
-      <Dropdown menu={buildMenu(task, onEdit, onAction)} trigger={['click']} placement="bottomRight">
+      <Dropdown menu={buildMenu(task, onEdit, onAction, onRemove)} trigger={['click']} placement="bottomRight">
         <Button type="text" size="small" icon={<MoreOutlined />} aria-label="더보기" />
       </Dropdown>
     </div>

@@ -153,4 +153,9 @@ export const CALENDAR_COMMON_NOTES: readonly ScreenNote[] = [
       return link && !Array.isArray(link) ? (link as Element).closest('.ant-card') : null
     },
   },
+  {
+    title: '프로젝트',
+    desc: '마감이 있는 장기 할일과 그 아래 세부 할일을 단계별로 봅니다. 왼쪽 네모(⊞·⊟)로 접고 펼치고, 줄 끝 + 로 세부 할일을 더합니다(3단까지). 막대는 맨 아래 할일이 끝난 만큼 찹니다. 날짜 미정 할일은 여기에만 보입니다.',
+    find: byCard('프로젝트'),
+  },
 ]

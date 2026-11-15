@@ -1,12 +1,13 @@
 import { Button, Drawer, Flex, Form, Grid, Segmented } from 'antd'
 import { useEffect, useRef, useState } from 'react'
-import { addEvent, addTask, changeStatus, editTask, removeEvent, removeTask, updateEvent } from '../../data/actions'
+import { addEvent, addTask, changeStatus, editTask, removeEvent, updateEvent } from '../../data/actions'
 import type { CalItem } from '../../data/calendarItems'
 import { usePlanner } from '../../data/store'
 import { PREF_KEYS, readPref, writePref, isOptionalString } from '../../hooks/usePref'
 import EventFormFields, { applyQuickToEvent, eventInitialValues, toEventFields, type EventFormValues } from '../form/EventFormFields'
 import QuickLine from '../form/QuickLine'
 import TaskFormFields, { applyQuickToTask, taskInitialValues, toTaskInput, type TaskFormValues } from '../form/TaskFormFields'
+import { useRemoveTask } from '../tree/useRemoveTask'
 import ItemDetail from './ItemDetail'
 import { useScopeAsk } from './useScopeAsk'
 
@@ -18,6 +19,13 @@ export interface CreateDraft {
   readonly start?: string
   readonly end?: string
   readonly allDay?: boolean
+  /** 할일 트리에서 세부 할일을 더할 때 */
+  readonly parentId?: string
+  readonly unscheduled?: boolean
+  /** 세부 할일은 상위 할일의 분류를 이어받는다 */
+  readonly categoryId?: string
+  /** 새 프로젝트 = 마감일이 꼭 있는 장기 할일 */
+  readonly project?: boolean
 }
 
 export type DrawerState =
@@ -43,6 +51,8 @@ const lastCategory = (): string | undefined => readPref<string | null>(PREF_KEYS
 function drawerTitle(state: DrawerState): string {
   if (state.mode === 'view') return state.item.title
   if (state.mode === 'edit') return state.item.kind === 'task' ? '할일 수정' : '일정 수정'
+  if (state.draft.project) return '새 프로젝트'
+  if (state.draft.parentId) return '세부 할일 추가'
   return '새로 만들기'
 }
 
@@ -53,6 +63,7 @@ export default function ItemDrawer({ state, today, onChange, onOpenDay }: ItemDr
   const [taskForm] = Form.useForm<TaskFormValues>()
   const [eventForm] = Form.useForm<EventFormValues>()
   const [askScope, scopeDialog] = useScopeAsk()
+  const [removeTaskWithAsk, removeDialog] = useRemoveTask()
   const [kind, setKind] = useState<ItemKind>('task')
   const saving = useRef(false)
 
@@ -67,7 +78,14 @@ export default function ItemDrawer({ state, today, onChange, onOpenDay }: ItemDr
     if (state.mode === 'create') {
       const { draft } = state
       setKind(draft.kind)
-      const defaults = { date: draft.date, start: draft.start, end: draft.end, categoryId: lastCategory() }
+      const defaults = {
+        date: draft.date,
+        start: draft.start,
+        end: draft.end,
+        categoryId: draft.categoryId ?? lastCategory(),
+        parentId: draft.parentId,
+        unscheduled: draft.unscheduled,
+      }
       taskForm.setFieldsValue(taskInitialValues(null, defaults))
       eventForm.setFieldsValue(eventInitialValues(null, null, { ...defaults, allDay: draft.allDay }))
       return
@@ -128,8 +146,9 @@ export default function ItemDrawer({ state, today, onChange, onOpenDay }: ItemDr
 
   async function remove(): Promise<void> {
     if (!item) return
-    if (item.kind === 'task') removeTask(item.id)
-    else {
+    if (item.kind === 'task') {
+      if (!(await removeTaskWithAsk(item.id))) return
+    } else {
       const scope = item.recurring ? await askScope('delete') : 'all'
       if (!scope) return
       removeEvent(item.id, item.occDate, scope)
@@ -164,6 +183,8 @@ export default function ItemDrawer({ state, today, onChange, onOpenDay }: ItemDr
           event={event}
           categories={data.categories}
           goals={data.goals}
+          parent={task?.parentId ? data.tasks.find((t) => t.id === task.parentId && !t.deleted) : undefined}
+          hasChildren={task !== undefined && data.tasks.some((t) => t.parentId === task.id && !t.deleted)}
           onEdit={() => onChange({ mode: 'edit', item: state.item })}
           onDelete={() => void remove()}
           onToggleDone={() => task && changeStatus(task.id, task.status === 'done' ? 'todo' : 'done')}
@@ -172,7 +193,7 @@ export default function ItemDrawer({ state, today, onChange, onOpenDay }: ItemDr
       )}
       {editing && (
         <>
-          {state.mode === 'create' && (
+          {state.mode === 'create' && !state.draft.project && !state.draft.parentId && (
             <Segmented block options={KIND_OPTIONS} value={kind} onChange={setKind} style={{ marginBottom: 20 }} aria-label="종류" />
           )}
           <QuickLine
@@ -182,7 +203,14 @@ export default function ItemDrawer({ state, today, onChange, onOpenDay }: ItemDr
           {/* 둘 다 붙여 두고 하나만 보인다 (종류를 바꿔도 적던 칸이 남게) */}
           <div style={{ display: formKind === 'task' ? undefined : 'none' }}>
             <Form form={taskForm} layout="vertical" requiredMark={false}>
-              {formKind === 'task' && <TaskFormFields form={taskForm} requireDue={false} onSubmit={() => void save()} />}
+              {formKind === 'task' && (
+                <TaskFormFields
+                  form={taskForm}
+                  requireDue={state.mode === 'create' && state.draft.project === true}
+                  taskId={state.mode === 'edit' ? state.item.id : undefined}
+                  onSubmit={() => void save()}
+                />
+              )}
             </Form>
           </div>
           <div style={{ display: formKind === 'event' ? undefined : 'none' }}>
@@ -193,6 +221,7 @@ export default function ItemDrawer({ state, today, onChange, onOpenDay }: ItemDr
         </>
       )}
       {scopeDialog}
+      {removeDialog}
     </Drawer>
   )
 }
