@@ -3,7 +3,6 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
   TouchSensor,
   useSensor,
   useSensors,
@@ -17,6 +16,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { timelineMinutesAt } from './timelineGeometry'
 import TaskDragChip from './TaskDragChip'
+import { MOUSE_DRAG_DISTANCE, MousePointerSensor, swallowNextClick, TOUCH_HOLD_MS } from './rowDrag'
 import { reorder } from '../data/actions'
 import type { Goal, Priority, Task } from '../data/types'
 import { PRIORITIES } from '../data/types'
@@ -69,8 +69,8 @@ const GROUP_LABEL = Object.fromEntries(PRIORITY_OPTIONS.map((o) => [o.value, o.l
 function Group({ priority, tasks, carried, goals, day, onEdit, onAction, onRemove, allTasks, onTimelineHover, onTimelineDrop }: TaskListProps & { priority: Priority }) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(MousePointerSensor, { activationConstraint: { distance: MOUSE_DRAG_DISTANCE } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: TOUCH_HOLD_MS, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
   const ids = tasks.map((t) => t.id)
@@ -84,6 +84,7 @@ function Group({ priority, tasks, carried, goals, day, onEdit, onAction, onRemov
   }
 
   const onDragEnd = (e: DragEndEvent): void => {
+    swallowNextClick()
     setActiveId(null)
     const task = taskOf(e.active.id)
     if (task) onTimelineHover(task, null)
@@ -98,6 +99,7 @@ function Group({ priority, tasks, carried, goals, day, onEdit, onAction, onRemov
   }
 
   const onDragCancel = (): void => {
+    swallowNextClick()
     if (activeTask) onTimelineHover(activeTask, null)
     setActiveId(null)
   }

@@ -10,6 +10,7 @@ import { categoryColor, chipColors } from '../components/calendar/colors'
 import TaskActionModal, { type TaskAction } from '../components/TaskActionModal'
 import TaskForm from '../components/TaskForm'
 import TaskList from '../components/TaskList'
+import ProjectTreeCard from '../components/tree/ProjectTreeCard'
 import { useRemoveTask } from '../components/tree/useRemoveTask'
 import Timeline, { type IncomingBlock, type TimelineBlock, type ZoneState } from '../components/Timeline'
 import UnscheduleZone from '../components/UnscheduleZone'
@@ -214,6 +215,9 @@ export default function DayPage({ date }: DayPageProps) {
               />
               {removeDialog}
             </Card>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <ProjectTreeCard today={today} onOpen={(task) => setForm({ open: true, task })} />
           </div>
         </Col>
         <Col xs={24} lg={9}>

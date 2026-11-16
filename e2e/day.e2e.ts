@@ -178,7 +178,7 @@ test('장기 할일은 마감일까지 매일 우선 업무 목록에 나오고,
   await page.getByRole('button', { name: '다음날' }).click()
   await page.getByRole('textbox', { name: '새 할일' }).fill('다음날 할일')
   await page.getByRole('textbox', { name: '새 할일' }).press('Enter')
-  await expect(page.getByText('기말 문제 만들기')).toBeVisible()
+  await expect(page.locator('.ant-card', { hasText: '우선 업무' }).getByText('기말 문제 만들기')).toBeVisible()
   await expect(page.getByText('장기', { exact: true })).toBeVisible()
   // D-day 는 보고 있는 날 기준: 마감이 3일 뒤면 다음 날 페이지는 D-2
   await expect(page.getByText(/마감 · D-2$/)).toBeVisible()
@@ -188,7 +188,7 @@ test('장기 할일은 마감일까지 매일 우선 업무 목록에 나오고,
 
   await page.getByRole('button', { name: '완료로 표시' }).last().click()
   await expect(page.getByText('완료 1 / 2')).toBeVisible()
-  await expect(page.getByText('기말 문제 만들기')).toBeVisible()
+  await expect(page.locator('.ant-card', { hasText: '우선 업무' }).getByText('기말 문제 만들기')).toBeVisible()
 
   await page.getByRole('button', { name: '다음날' }).click()
   await expect(page.getByText(/마감 · D-1$/)).toBeVisible()
@@ -308,4 +308,61 @@ test('일정표 밖 다른 곳에 놓거나 Esc 를 누르면 아무것도 바�
   await page.mouse.up()
   await expect(block).toBeVisible()
   await expect(page.getByRole('region', { name: '시간 빼기' })).toHaveCount(0)
+})
+
+test('할일 줄 어디를 잡아도 일정표로 끌 수 있고, 그냥 누르기와 작은 버튼은 그대로다', async ({ page }) => {
+  await page.getByRole('textbox', { name: '새 할일' }).fill('보고서 쓰기')
+  await page.getByRole('textbox', { name: '새 할일' }).press('Enter')
+  const grid = (await page.getByRole('button', { name: '시간표 빈 곳' }).boundingBox())!
+  const title = page.getByText('보고서 쓰기', { exact: true })
+
+  // 이름을 그냥 누르면 수정 창
+  await title.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: '취소' }).click()
+  await expect(page.getByRole('dialog')).toBeHidden()
+
+  // 완료 칸에서 누른 채 일정표까지 가도 끌기가 되지 않는다
+  const check = (await page.getByRole('button', { name: '완료로 표시' }).boundingBox())!
+  await page.mouse.move(check.x + 5, check.y + 5)
+  await page.mouse.down()
+  await page.mouse.move(grid.x + 80, grid.y + 48 * 3 + 2, { steps: 12 })
+  await expect(page.locator('[data-timeline-ghost]')).toHaveCount(0)
+  await page.mouse.up()
+  await expect(page.getByRole('button', { name: /^보고서 쓰기 \d/ })).toHaveCount(0)
+  // 완료 칸 누르기는 그대로
+  await page.getByRole('button', { name: '완료로 표시' }).click()
+  await expect(page.getByText('완료 1 / 1')).toBeVisible()
+
+  // 이름을 잡고 일정표 13시에 놓는다. 놓은 뒤 수정 창이 열리지 않는다
+  const t = (await title.boundingBox())!
+  await page.mouse.move(t.x + 10, t.y + t.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(grid.x + 80, grid.y + 48 * 5 + 2, { steps: 12 })
+  await page.mouse.up()
+  await expect(page.getByRole('button', { name: '보고서 쓰기 13:00~14:00' })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+test('계획 화면 우선 업무 아래에 프로젝트가 보이고, 여기서는 추가 버튼이 없다', async ({ page }) => {
+  await page.getByRole('button', { name: '장기 할일 추가' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('할일', { exact: true }).fill('발표 준비')
+  const tomorrow = await page.evaluate(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
+  await dialog.getByLabel('마감일').fill(tomorrow)
+  await dialog.getByLabel('마감일').press('Enter')
+  await dialog.getByRole('button', { name: '저장' }).click()
+  await expect(dialog).toBeHidden()
+
+  const card = page.locator('.ant-card').filter({ has: page.getByText('프로젝트', { exact: true }) })
+  await expect(card.getByRole('tree', { name: '프로젝트 트리' })).toBeVisible()
+  await expect(card.getByText('발표 준비')).toBeVisible()
+  await expect(card.getByRole('button', { name: '새 프로젝트' })).toHaveCount(0)
+  await expect(card.getByRole('button', { name: /세부 할일 추가/ })).toHaveCount(0)
+  await card.getByText('발표 준비').click()
+  await expect(page.getByRole('dialog').getByLabel('할일', { exact: true })).toHaveValue('발표 준비')
 })

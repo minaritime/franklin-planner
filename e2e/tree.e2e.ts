@@ -60,7 +60,9 @@ test('새 프로젝트에 세부·그 아래 할일을 더하고, 진행률과 �
   // 계획 화면: 그날 목록에 상위 할일 이름이 붙는다
   await page.goto('./#/day/2026-11-14')
   await expect(page.getByLabel('상위 할일 기획')).toBeVisible()
-  await expect(page.getByText('세계관 기획')).toHaveCount(0)
+  // 날짜 미정 할일은 그날 목록엔 없고, 아래 프로젝트 칸에만 보인다
+  await expect(page.locator('.ant-card', { hasText: '우선 업무' }).getByText('세계관 기획')).toHaveCount(0)
+  await expect(page.getByRole('tree', { name: '프로젝트 트리' }).getByText('세계관 기획')).toBeVisible()
 })
 
 test('마감 미정 프로젝트는 마감 있는 것 아래에 놓이고 마감 일정·달력에는 안 나온다', async ({ page }) => {
