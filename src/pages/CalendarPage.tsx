@@ -13,6 +13,7 @@ import MiniCalendar from '../components/calendar/MiniCalendar'
 import MonthView from '../components/calendar/MonthView'
 import TodayCard from '../components/calendar/TodayCard'
 import ProjectTreeCard from '../components/tree/ProjectTreeCard'
+import { addToProject, viewProject } from '../components/tree/projectDrawer'
 import { useFitViewport } from '../components/calendar/useFitViewport'
 import TimeGridView from '../components/calendar/TimeGridView'
 import { useCalendarDrag, type DragState } from '../components/calendar/useCalendarDrag'
@@ -20,7 +21,6 @@ import { SHORTCUT_LINES, useCalendarKeys } from '../components/calendar/useCalen
 import { useScopeAsk } from '../components/calendar/useScopeAsk'
 import {
   buildItems,
-  itemOfTask,
   NO_CATEGORY,
   rangeFor,
   stepDate,
@@ -144,15 +144,8 @@ export default function CalendarPage({ view: routeView, date: routeDate }: Calen
             <TodayCard date={date} today={today} onOpen={(item) => setDrawer({ mode: 'view', item })} onOpenPlan={() => navigate({ page: 'day', date })} />
             <ProjectTreeCard
               today={today}
-              onOpen={(task) => setDrawer({ mode: 'view', item: itemOfTask(task, data.categories) })}
-              onAdd={(parent) =>
-                setDrawer({
-                  mode: 'create',
-                  draft: parent
-                    ? { kind: 'task', date: today, parentId: parent.id, unscheduled: true, categoryId: parent.categoryId }
-                    : { kind: 'task', date: today, project: true },
-                })
-              }
+              onOpen={(task) => setDrawer(viewProject(task, data.categories))}
+              onAdd={(parent) => setDrawer(addToProject(parent, today))}
             />
           </Flex>
         </Col>

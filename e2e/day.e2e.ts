@@ -344,7 +344,7 @@ test('할일 줄 어디를 잡아도 일정표로 끌 수 있고, 그냥 누르�
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
-test('계획 화면 우선 업무 아래에 프로젝트가 보이고, 여기서는 추가 버튼이 없다', async ({ page }) => {
+test('계획 화면 우선 업무 아래 프로젝트 칸은 달력과 같다: 누르면 상세 창에서 지울 수 있다', async ({ page }) => {
   await page.getByRole('button', { name: '장기 할일 추가' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('할일', { exact: true }).fill('발표 준비')
@@ -361,8 +361,14 @@ test('계획 화면 우선 업무 아래에 프로젝트가 보이고, 여기서
   const card = page.locator('.ant-card').filter({ has: page.getByText('프로젝트', { exact: true }) })
   await expect(card.getByRole('tree', { name: '프로젝트 트리' })).toBeVisible()
   await expect(card.getByText('발표 준비')).toBeVisible()
-  await expect(card.getByRole('button', { name: '새 프로젝트' })).toHaveCount(0)
-  await expect(card.getByRole('button', { name: /세부 할일 추가/ })).toHaveCount(0)
+  await expect(card.getByRole('button', { name: '새 프로젝트' })).toBeVisible()
+  await expect(card.getByRole('button', { name: '발표 준비 아래에 세부 할일 추가' })).toBeVisible()
+
   await card.getByText('발표 준비').click()
-  await expect(page.getByRole('dialog').getByLabel('할일', { exact: true })).toHaveValue('발표 준비')
+  const drawer = page.locator('.ant-drawer-open')
+  await expect(drawer.getByRole('button', { name: '수정' })).toBeVisible()
+  await drawer.getByRole('button', { name: '삭제' }).click()
+  await page.getByRole('button', { name: '지우기' }).click()
+  await expect(card.getByText('발표 준비')).toHaveCount(0)
+  await expect(page.locator('.ant-card', { hasText: '우선 업무' }).getByText('발표 준비')).toHaveCount(0)
 })

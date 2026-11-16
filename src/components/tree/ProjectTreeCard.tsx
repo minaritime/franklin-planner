@@ -11,8 +11,8 @@ import { PRIORITY_COLOR_TOKEN } from '../../theme'
 interface ProjectTreeCardProps {
   readonly today: string
   readonly onOpen: (task: Task) => void
-  /** parent 가 없으면 새 프로젝트(장기 할일). 없으면 추가 버튼을 모두 숨긴다 (보기만 하는 곳) */
-  readonly onAdd?: (parent: Task | null) => void
+  /** parent 가 없으면 새 프로젝트(장기 할일) */
+  readonly onAdd: (parent: Task | null) => void
 }
 
 interface ProjectDataNode extends TreeDataNode {
@@ -33,7 +33,7 @@ function toTreeData(nodes: readonly TaskNode[], depth = 1): ProjectDataNode[] {
 interface NodeTitleProps {
   readonly data: ProjectDataNode
   readonly today: string
-  readonly onAdd?: (parent: Task) => void
+  readonly onAdd: (parent: Task) => void
 }
 
 /** 한 줄: 우선순위 · 제목 · (+) / 아래 줄: 날짜 미정 · D-day · 진행 막대 */
@@ -53,7 +53,7 @@ function NodeTitle({ data, today, onAdd }: NodeTitleProps) {
         <Typography.Text delete={done} type={done ? 'secondary' : undefined} ellipsis={{ tooltip: task.title }} style={{ flex: 1, minWidth: 0 }}>
           {task.title}
         </Typography.Text>
-        {onAdd && data.depth < MAX_TREE_DEPTH && (
+        {data.depth < MAX_TREE_DEPTH && (
           <Button
             type="text"
             size="small"
@@ -107,17 +107,15 @@ export default function ProjectTreeCard({ today, onOpen, onAdd }: ProjectTreeCar
   const [saved, setSaved] = usePref<string[] | null>(PREF_KEYS.projectTreeExpanded, null, isStringArrayOrNull)
   const expanded = saved ?? roots.map((n) => n.task.id)
   // 세부 할일을 더하면 바로 보이게 그 할일을 펼쳐 둔다
-  const addUnder = onAdd
-    ? (parent: Task): void => {
-        if (!expanded.includes(parent.id)) setSaved([...expanded, parent.id])
-        onAdd(parent)
-      }
-    : undefined
+  const addUnder = (parent: Task): void => {
+    if (!expanded.includes(parent.id)) setSaved([...expanded, parent.id])
+    onAdd(parent)
+  }
 
   return (
     <Card
       title="프로젝트"
-      extra={onAdd && <Button type="text" size="small" icon={<PlusOutlined />} aria-label="새 프로젝트" onClick={() => onAdd(null)} />}
+      extra={<Button type="text" size="small" icon={<PlusOutlined />} aria-label="새 프로젝트" onClick={() => onAdd(null)} />}
       styles={{ body: { padding: '12px 8px' } }}
     >
       {roots.length === 0 ? (
