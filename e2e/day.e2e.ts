@@ -269,3 +269,43 @@ test('할일을 끌어 일정표에 놓고, 위·아래 끝과 몸통을 끌어 
   await page.getByRole('button', { name: '보고서 쓰기 09:30~12:30' }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
 })
+
+test('일정표의 할일을 우선 업무 쪽으로 끌면 시간 빼기 칸이 보이고, 놓으면 시간만 빠진다', async ({ page }) => {
+  await page.getByRole('textbox', { name: '새 할일' }).fill('10시 보고서 쓰기')
+  await page.getByRole('textbox', { name: '새 할일' }).press('Enter')
+  const block = page.getByRole('button', { name: '보고서 쓰기 10:00~11:00' })
+  await expect(block).toBeVisible()
+  const zone = page.getByRole('region', { name: '시간 빼기' })
+  await expect(zone).toHaveCount(0)
+
+  const b = (await block.boundingBox())!
+  const card = (await page.locator('.ant-card').filter({ hasText: '우선 업무' }).first().boundingBox())!
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2 + 30, { steps: 4 })
+  // 끄기 시작하면 칸이 보이지만 아직 그 위는 아니다
+  await expect(zone).toBeVisible()
+  await expect(zone).toHaveCSS('border-top-style', 'dashed')
+  await page.mouse.move(card.x + card.width / 2, card.y + card.height / 2, { steps: 10 })
+  await page.mouse.up()
+
+  await expect(zone).toHaveCount(0)
+  await expect(block).toHaveCount(0)
+  await expect(page.getByText('보고서 쓰기', { exact: true })).toBeVisible()
+  await expect(page.getByText('10:00', { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+test('일정표 밖 다른 곳에 놓거나 Esc 를 누르면 아무것도 바뀌지 않는다', async ({ page }) => {
+  await page.getByRole('textbox', { name: '새 할일' }).fill('10시 보고서 쓰기')
+  await page.getByRole('textbox', { name: '새 할일' }).press('Enter')
+  const block = page.getByRole('button', { name: '보고서 쓰기 10:00~11:00' })
+  const b = (await block.boundingBox())!
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2 + 100, { steps: 6 })
+  await page.keyboard.press('Escape')
+  await page.mouse.up()
+  await expect(block).toBeVisible()
+  await expect(page.getByRole('region', { name: '시간 빼기' })).toHaveCount(0)
+})

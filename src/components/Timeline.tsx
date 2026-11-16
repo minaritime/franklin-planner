@@ -1,10 +1,12 @@
 import { theme, Typography } from 'antd'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { hourRange, layoutEvents, toMinutes } from '../data/timeline'
 import { LAST_MINUTE, type Span } from '../data/timelineDrag'
 import type { Priority } from '../data/types'
 import { PRIORITY_COLOR_TOKEN } from '../theme'
 import { formatHM, HOUR_HEIGHT, minutesIn } from './timelineGeometry'
+import TaskDragChip from './TaskDragChip'
 import { spanOf, useTimelineDrag } from './useTimelineDrag'
 
 /** 시간표 한 칸: 일정이거나, 시간이 붙은 할일 */
@@ -36,7 +38,13 @@ interface TimelineProps {
   /** 칸을 옮기거나 위·아래 끝을 끌어 바꾼 시간 (HH:MM) */
   readonly onChangeBlock: (block: TimelineBlock, start: string, end: string) => void
   readonly incoming?: IncomingBlock | null
+  /** 시간 붙은 할일을 일정표 밖 '시간 빼기' 칸에 놓았을 때 */
+  readonly onUnschedule: (block: TimelineBlock) => void
+  /** 시간 붙은 할일을 끄는 동안 '시간 빼기' 칸을 보여 줄지: off=안 끄는 중, ready=끄는 중, over=칸 위 */
+  readonly onZoneChange: (zone: ZoneState) => void
 }
+
+export type ZoneState = 'off' | 'ready' | 'over'
 
 const LABEL_WIDTH = 40
 const MIN_HEIGHT = 20
@@ -85,7 +93,17 @@ function Ghost({ span, label, top }: { span: Span; label: string; top: (m: numbe
   )
 }
 
-export default function Timeline({ isToday, blocks, onOpenBlock, onCreate, onChangeBlock, incoming }: TimelineProps) {
+/** 일정표 밖으로 끌고 나간 동안 손 밑에 따라다니는 이름표 */
+function FloatingChip({ x, y, title, priority }: { x: number; y: number; title: string; priority: Priority }) {
+  return createPortal(
+    <div aria-hidden style={{ position: 'fixed', left: x + 8, top: y + 8, zIndex: 2000, pointerEvents: 'none' }}>
+      <TaskDragChip title={title} priority={priority} />
+    </div>,
+    document.body,
+  )
+}
+
+export default function Timeline({ isToday, blocks, onOpenBlock, onCreate, onChangeBlock, incoming, onUnschedule, onZoneChange }: TimelineProps) {
   const { token } = theme.useToken()
   const range = hourRange(incoming ? [...blocks, { start: formatHM(incoming.start), end: formatHM(incoming.end) }] : blocks)
   const hours = Array.from({ length: range.end - range.start }, (_, i) => range.start + i)
@@ -103,9 +121,22 @@ export default function Timeline({ isToday, blocks, onOpenBlock, onCreate, onCha
       const block = blocks.find((b) => keyOf(b) === key)
       if (block) onChangeBlock(block, formatHM(span.start), formatHM(span.end))
     },
+    onUnschedule: (key) => {
+      const block = blocks.find((b) => keyOf(b) === key)
+      if (block) onUnschedule(block)
+    },
   })
   const active = drag.drag?.started ? drag.drag : null
   const activeBlock = active?.blockKey ? blocks.find((b) => keyOf(b) === active.blockKey) : undefined
+  const zone: ZoneState = active?.mode === 'move' && active.removable ? (active.place === 'zone' ? 'over' : 'ready') : 'off'
+  const zoneRef = useRef(onZoneChange)
+  useEffect(() => {
+    zoneRef.current = onZoneChange
+  })
+  useEffect(() => {
+    zoneRef.current(zone)
+  }, [zone])
+  useEffect(() => () => zoneRef.current('off'), [])
 
   /** 일정은 파란 바탕, 할일은 우선순위 색 테두리의 흰 바탕으로 구분한다 */
   const blockStyle = (block: TimelineBlock): CSSProperties => {
@@ -146,7 +177,10 @@ export default function Timeline({ isToday, blocks, onOpenBlock, onCreate, onCha
         style={{ position: 'absolute', inset: `0 0 0 ${LABEL_WIDTH}px`, cursor: 'copy', touchAction: 'none' }}
       />
 
-      {active && <Ghost span={spanOf(active, limits)} label={activeBlock?.title ?? ''} top={top} />}
+      {active && active.place === 'grid' && <Ghost span={spanOf(active, limits)} label={activeBlock?.title ?? ''} top={top} />}
+      {active && active.place !== 'grid' && activeBlock && (
+        <FloatingChip x={active.x} y={active.y} title={activeBlock.title} priority={activeBlock.priority ?? 'B'} />
+      )}
       {incoming && <Ghost span={incoming} label={incoming.title} top={top} />}
 
       {layoutEvents(blocks).map(({ event: block, column, columns }) => {
@@ -154,7 +188,7 @@ export default function Timeline({ isToday, blocks, onOpenBlock, onCreate, onCha
         const end = toMinutes(block.end)
         const height = Math.max(MIN_HEIGHT, top(end) - top(start) - 2)
         const key = keyOf(block)
-        const grab = { key, start, end }
+        const grab = { key, start, end, removable: block.kind === 'task' }
         const edge = (side: 'start' | 'end') => (
           <span
             role="separator"

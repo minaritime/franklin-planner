@@ -2,6 +2,17 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 import { dragSpan, type Span, type TimelineDragMode } from '../data/timelineDrag'
 import { lockTextSelect } from './calendar/selectLock'
 
+/** 손이 있는 곳: 일정표 위, 시간 빼기 칸 위, 그 밖 */
+export type DragPlace = 'grid' | 'zone' | 'out'
+
+/** 화면 좌표 아래가 어디인지. 시간 빼기 칸은 data-unschedule-zone, 일정표는 data-timeline-grid */
+export function placeAt(x: number, y: number): DragPlace {
+  const els = document.elementsFromPoint(x, y)
+  if (els.some((el) => el instanceof HTMLElement && el.dataset.unscheduleZone !== undefined)) return 'zone'
+  if (els.some((el) => el instanceof HTMLElement && el.dataset.timelineGrid !== undefined)) return 'grid'
+  return 'out'
+}
+
 export interface TimelineDragState {
   readonly mode: TimelineDragMode
   /** 옮기거나 길이를 바꾸는 칸 (만들기면 없음) */
@@ -12,6 +23,12 @@ export interface TimelineDragState {
   readonly end: number
   /** 조금이라도 움직였는지. 안 움직이고 떼면 그냥 누르기 */
   readonly started: boolean
+  /** 옮기기에서 손이 있는 곳 (길이 바꾸기·만들기는 늘 grid) */
+  readonly place: DragPlace
+  /** 일정표 밖으로 빼서 시간을 없앨 수 있는 칸 (시간 붙은 할일) */
+  readonly removable: boolean
+  readonly x: number
+  readonly y: number
 }
 
 interface Limits {
@@ -24,6 +41,8 @@ interface Handlers {
   readonly limits: Limits
   readonly onCreate: (span: Span) => void
   readonly onChange: (blockKey: string, span: Span) => void
+  /** 시간 빼기 칸에 놓았을 때 */
+  readonly onUnschedule: (blockKey: string) => void
 }
 
 /** 이만큼 움직여야 끌기로 본다 (그 전에는 누르기) */
@@ -50,14 +69,23 @@ export function useTimelineDrag(handlers: Handlers) {
       const d = ref.current
       if (!d) return
       if (!d.started && Math.abs(e.clientY - d.startY) < DRAG_THRESHOLD) return
-      set({ ...d, started: true, current: latest.current.minutesAt(e.clientY) })
+      const place = d.mode === 'move' ? placeAt(e.clientX, e.clientY) : 'grid'
+      set({
+        ...d,
+        started: true,
+        current: latest.current.minutesAt(e.clientY),
+        // 시간 빼기 칸은 할일만. 일정은 그 위에 놓아도 밖에 놓은 것과 같다
+        place: place === 'zone' && !d.removable ? 'out' : place,
+        x: e.clientX,
+        y: e.clientY,
+      })
     }
     const up = (): void => {
       const d = ref.current
       if (!d) return
       set(null)
       lockTextSelect(false)
-      const { limits, onCreate, onChange } = latest.current
+      const { limits, onCreate, onChange, onUnschedule } = latest.current
       if (d.mode === 'create') {
         onCreate(spanOf(d, limits))
         return
@@ -68,6 +96,12 @@ export function useTimelineDrag(handlers: Handlers) {
       window.setTimeout(() => {
         justDragged.current = false
       }, 0)
+      if (d.place === 'zone') {
+        onUnschedule(d.blockKey)
+        return
+      }
+      // 일정표 밖(시간 빼기 칸 말고)에 놓으면 아무것도 바꾸지 않는다
+      if (d.place === 'out') return
       const span = spanOf(d, limits)
       if (span.start !== d.start || span.end !== d.end) onChange(d.blockKey, span)
     }
@@ -93,7 +127,7 @@ export function useTimelineDrag(handlers: Handlers) {
     }
   }, [])
 
-  const begin = useCallback((e: ReactPointerEvent, mode: TimelineDragMode, block?: { key: string; start: number; end: number }) => {
+  const begin = useCallback((e: ReactPointerEvent, mode: TimelineDragMode, block?: { key: string; start: number; end: number; removable?: boolean }) => {
     if (e.button !== 0) return
     e.stopPropagation()
     if (e.pointerType === 'mouse') e.preventDefault()
@@ -107,6 +141,10 @@ export function useTimelineDrag(handlers: Handlers) {
       start: block?.start ?? m,
       end: block?.end ?? m,
       started: mode === 'create',
+      place: 'grid' as const,
+      removable: block?.removable ?? false,
+      x: e.clientX,
+      y: e.clientY,
       startY: e.clientY,
     }
     ref.current = next

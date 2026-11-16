@@ -11,7 +11,8 @@ import TaskActionModal, { type TaskAction } from '../components/TaskActionModal'
 import TaskForm from '../components/TaskForm'
 import TaskList from '../components/TaskList'
 import { useRemoveTask } from '../components/tree/useRemoveTask'
-import Timeline, { type IncomingBlock, type TimelineBlock } from '../components/Timeline'
+import Timeline, { type IncomingBlock, type TimelineBlock, type ZoneState } from '../components/Timeline'
+import UnscheduleZone from '../components/UnscheduleZone'
 import { formatHM } from '../components/timelineGeometry'
 import { useScopeAsk } from '../components/calendar/useScopeAsk'
 import { bringOverdue, moveTask, updateEvent } from '../data/actions'
@@ -103,6 +104,8 @@ export default function DayPage({ date }: DayPageProps) {
   const [drawer, setDrawer] = useState<DrawerState | null>(null)
   const [incoming, setIncoming] = useState<IncomingBlock | null>(null)
   const [askScope, scopeDialog] = useScopeAsk()
+  const [zone, setZone] = useState<ZoneState>('off')
+  const isSplit = Grid.useBreakpoint().lg ?? true
   const { token } = theme.useToken()
 
   const dayTasks = useMemo(() => tasksForDay(data.tasks, date), [data.tasks, date])
@@ -183,31 +186,35 @@ export default function DayPage({ date }: DayPageProps) {
       <OverdueNotice tasks={overdue} today={today} />
       <Row gutter={[24, 16]}>
         <Col xs={24} lg={15}>
-          <Card
-            title="우선 업무"
-            extra={
-              listed.length > 0 && (
-                <Typography.Text type="secondary" className="num">
-                  완료 {doneCount} / {listed.length}
-                </Typography.Text>
-              )
-            }
-          >
-            <QuickAdd date={date} />
-            <TaskList
-              tasks={dayTasks}
-              carried={carried}
-              goals={data.goals}
-              day={date}
-              onEdit={(task) => setForm({ open: true, task })}
-              onAction={setAction}
-              onRemove={(task) => void removeWithAsk(task.id)}
-              allTasks={data.tasks}
-              onTimelineHover={hoverTask}
-              onTimelineDrop={dropTask}
-            />
-            {removeDialog}
-          </Card>
+          {/* 시간 빼기 칸이 우선 업무 칸을 정확히 덮도록 기준을 Card 에 둔다 (Col 은 간격 여백이 있다) */}
+          <div style={{ position: 'relative' }}>
+            <UnscheduleZone zone={zone} docked={isSplit ? 'cover' : 'top'} />
+            <Card
+              title="우선 업무"
+              extra={
+                listed.length > 0 && (
+                  <Typography.Text type="secondary" className="num">
+                    완료 {doneCount} / {listed.length}
+                  </Typography.Text>
+                )
+              }
+            >
+              <QuickAdd date={date} />
+              <TaskList
+                tasks={dayTasks}
+                carried={carried}
+                goals={data.goals}
+                day={date}
+                onEdit={(task) => setForm({ open: true, task })}
+                onAction={setAction}
+                onRemove={(task) => void removeWithAsk(task.id)}
+                allTasks={data.tasks}
+                onTimelineHover={hoverTask}
+                onTimelineDrop={dropTask}
+              />
+              {removeDialog}
+            </Card>
+          </div>
         </Col>
         <Col xs={24} lg={9}>
           <Flex vertical gap={16}>
@@ -229,6 +236,8 @@ export default function DayPage({ date }: DayPageProps) {
                 onCreate={(start, end) => setDrawer(newEvent(date, start, end))}
                 onChangeBlock={(block, start, end) => void changeBlock(block, start, end)}
                 incoming={incoming}
+                onUnschedule={(block) => moveTask(block.id, 0, null)}
+                onZoneChange={setZone}
               />
               {scopeDialog}
             </Card>

@@ -52,3 +52,12 @@ body {
   -webkit-user-select: none !important;
   user-select: none !important;
 }
+
+/* 시간 빼기 칸이 나타날 때 */
+@keyframes unschedule-zone-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-unschedule-zone] { animation: none !important; }
+}

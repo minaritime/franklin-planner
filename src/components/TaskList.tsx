@@ -143,7 +143,7 @@ function Group({ priority, tasks, carried, goals, day, onEdit, onAction, onRemov
         {carried.map((t, i) => row(t, tasks.length + i, true))}
         {createPortal(
           <DragOverlay dropAnimation={null} style={{ width: 'auto', height: 'auto' }}>
-            {activeTask ? <TaskDragChip task={activeTask} /> : null}
+            {activeTask ? <TaskDragChip title={activeTask.title} priority={activeTask.priority} /> : null}
           </DragOverlay>,
           document.body,
         )}
