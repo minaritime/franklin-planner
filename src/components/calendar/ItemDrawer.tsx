@@ -1,4 +1,4 @@
-import { Button, Drawer, Flex, Form, Grid, Segmented } from 'antd'
+import { Button, Drawer, Flex, Form, Grid, Modal, Segmented } from 'antd'
 import { useEffect, useRef, useState } from 'react'
 import { addEvent, addTask, changeStatus, editTask, removeEvent, updateEvent } from '../../data/actions'
 import type { CalItem } from '../../data/calendarItems'
@@ -41,6 +41,8 @@ interface ItemDrawerProps {
 }
 
 const DRAWER_WIDTH = 560
+/** 새로 만들기 창 너비 (계획 화면 '장기 할일 추가' 창과 같은 모양으로 화면 가운데) */
+const CREATE_MODAL_WIDTH = 520
 const KIND_OPTIONS = [
   { value: 'task' as const, label: '할일' },
   { value: 'event' as const, label: '일정' },
@@ -56,7 +58,7 @@ function drawerTitle(state: DrawerState): string {
   return '새로 만들기'
 }
 
-/** 달력 오른쪽에서 열리는 창: 보기 → 수정, 또는 새로 만들기 */
+/** 보기·수정은 오른쪽에서 열리는 창, 새로 만들기는 화면 가운데 창 */
 export default function ItemDrawer({ state, today, onChange, onOpenDay }: ItemDrawerProps) {
   const data = usePlanner()
   const isWide = Grid.useBreakpoint().md ?? true
@@ -157,71 +159,86 @@ export default function ItemDrawer({ state, today, onChange, onOpenDay }: ItemDr
   }
 
   const editing = state !== null && state.mode !== 'view'
+  const creating = state?.mode === 'create'
+
+  const footer = editing && (
+    <Flex justify="flex-end" gap={8}>
+      <Button onClick={() => (state.mode === 'edit' ? onChange({ mode: 'view', item: state.item }) : close())}>취소</Button>
+      <Button type="primary" onClick={() => void save()}>
+        저장
+      </Button>
+    </Flex>
+  )
+
+  const form = editing && (
+    <>
+      {state.mode === 'create' && !state.draft.project && !state.draft.parentId && (
+        <Segmented block options={KIND_OPTIONS} value={kind} onChange={setKind} style={{ marginBottom: 20 }} aria-label="종류" />
+      )}
+      <QuickLine
+        today={today}
+        onFill={(entry) => (formKind === 'task' ? applyQuickToTask(taskForm, entry) : applyQuickToEvent(eventForm, entry))}
+      />
+      {/* 둘 다 붙여 두고 하나만 보인다 (종류를 바꿔도 적던 칸이 남게) */}
+      <div style={{ display: formKind === 'task' ? undefined : 'none' }}>
+        <Form form={taskForm} layout="vertical" requiredMark={false}>
+          {formKind === 'task' && (
+            <TaskFormFields
+              form={taskForm}
+              requireDue={state.mode === 'create' && state.draft.project === true}
+              taskId={state.mode === 'edit' ? state.item.id : undefined}
+              onSubmit={() => void save()}
+            />
+          )}
+        </Form>
+      </div>
+      <div style={{ display: formKind === 'event' ? undefined : 'none' }}>
+        <Form form={eventForm} layout="vertical" requiredMark={false}>
+          {formKind === 'event' && <EventFormFields form={eventForm} onSubmit={() => void save()} />}
+        </Form>
+      </div>
+    </>
+  )
 
   return (
-    <Drawer
-      open={state !== null}
-      title={state ? drawerTitle(state) : ''}
-      width={isWide ? DRAWER_WIDTH : '100%'}
-      onClose={close}
-      destroyOnHidden
-      footer={
-        editing && (
-          <Flex justify="flex-end" gap={8}>
-            <Button onClick={() => (state.mode === 'edit' ? onChange({ mode: 'view', item: state.item }) : close())}>취소</Button>
-            <Button type="primary" onClick={() => void save()}>
-              저장
-            </Button>
-          </Flex>
-        )
-      }
-    >
-      {state?.mode === 'view' && (
-        <ItemDetail
-          item={state.item}
-          task={task}
-          event={event}
-          categories={data.categories}
-          goals={data.goals}
-          parent={task?.parentId ? data.tasks.find((t) => t.id === task.parentId && !t.deleted) : undefined}
-          hasChildren={task !== undefined && data.tasks.some((t) => t.parentId === task.id && !t.deleted)}
-          onEdit={() => onChange({ mode: 'edit', item: state.item })}
-          onDelete={() => void remove()}
-          onToggleDone={() => task && changeStatus(task.id, task.status === 'done' ? 'todo' : 'done')}
-          onOpenDay={() => onOpenDay(task?.date ?? state.item.date)}
-        />
-      )}
-      {editing && (
-        <>
-          {state.mode === 'create' && !state.draft.project && !state.draft.parentId && (
-            <Segmented block options={KIND_OPTIONS} value={kind} onChange={setKind} style={{ marginBottom: 20 }} aria-label="종류" />
-          )}
-          <QuickLine
-            today={today}
-            onFill={(entry) => (formKind === 'task' ? applyQuickToTask(taskForm, entry) : applyQuickToEvent(eventForm, entry))}
+    <>
+      <Modal
+        open={creating}
+        title={state && creating ? drawerTitle(state) : ''}
+        width={CREATE_MODAL_WIDTH}
+        onCancel={close}
+        destroyOnHidden
+        footer={creating ? footer : null}
+      >
+        {creating && <div style={{ marginTop: 16 }}>{form}</div>}
+      </Modal>
+      <Drawer
+        open={state !== null && !creating}
+        title={state && !creating ? drawerTitle(state) : ''}
+        width={isWide ? DRAWER_WIDTH : '100%'}
+        onClose={close}
+        destroyOnHidden
+        footer={!creating && footer}
+      >
+        {state?.mode === 'view' && (
+          <ItemDetail
+            item={state.item}
+            task={task}
+            event={event}
+            categories={data.categories}
+            goals={data.goals}
+            parent={task?.parentId ? data.tasks.find((t) => t.id === task.parentId && !t.deleted) : undefined}
+            hasChildren={task !== undefined && data.tasks.some((t) => t.parentId === task.id && !t.deleted)}
+            onEdit={() => onChange({ mode: 'edit', item: state.item })}
+            onDelete={() => void remove()}
+            onToggleDone={() => task && changeStatus(task.id, task.status === 'done' ? 'todo' : 'done')}
+            onOpenDay={() => onOpenDay(task?.date ?? state.item.date)}
           />
-          {/* 둘 다 붙여 두고 하나만 보인다 (종류를 바꿔도 적던 칸이 남게) */}
-          <div style={{ display: formKind === 'task' ? undefined : 'none' }}>
-            <Form form={taskForm} layout="vertical" requiredMark={false}>
-              {formKind === 'task' && (
-                <TaskFormFields
-                  form={taskForm}
-                  requireDue={state.mode === 'create' && state.draft.project === true}
-                  taskId={state.mode === 'edit' ? state.item.id : undefined}
-                  onSubmit={() => void save()}
-                />
-              )}
-            </Form>
-          </div>
-          <div style={{ display: formKind === 'event' ? undefined : 'none' }}>
-            <Form form={eventForm} layout="vertical" requiredMark={false}>
-              {formKind === 'event' && <EventFormFields form={eventForm} onSubmit={() => void save()} />}
-            </Form>
-          </div>
-        </>
-      )}
+        )}
+        {!creating && form}
+      </Drawer>
       {scopeDialog}
       {removeDialog}
-    </Drawer>
+    </>
   )
 }

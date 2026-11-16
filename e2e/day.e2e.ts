@@ -1,4 +1,7 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+/** 보기·수정은 오른쪽 창(Drawer), 새로 만들기는 가운데 창(Modal). 지금 열려 있는 쪽 */
+const itemPanel = (page: Page) => page.locator('.ant-drawer-open, .ant-modal').filter({ visible: true })
 
 test.beforeEach(async ({ page }) => {
   await page.goto('./')
@@ -43,10 +46,12 @@ test('빠른 추가로 할일을 넣고 완료 표시한 뒤 다른 날로 미�
 
 test('일정을 추가하고 메모가 새로고침 뒤에도 남는다', async ({ page }) => {
   await page.getByRole('button', { name: '일정 추가' }).first().click()
-  const drawer = page.locator('.ant-drawer-open')
+  const drawer = itemPanel(page)
   await drawer.getByLabel('제목').fill('수업')
   await drawer.getByRole('button', { name: '저장' }).click()
   await expect(page.getByRole('button', { name: /수업/ })).toBeVisible()
+  // 새로 만들기 창(안에 '메모' 칸이 있다)이 다 닫힌 뒤에 그날 메모를 쓴다
+  await expect(drawer).toHaveCount(0)
 
   await page.getByRole('textbox', { name: '메모' }).fill('잊지 말 것')
   await page.getByRole('textbox', { name: '메모' }).blur()
@@ -78,7 +83,7 @@ test('장기 할일을 만들면 달력에 막대로 보이고 눌러서 고칠 
   await expect(bar.first()).toBeVisible()
   await expect(page.locator('.ant-card', { hasText: '마감 일정' }).getByText('D-1')).toBeVisible()
   await bar.first().click()
-  const drawer = page.locator('.ant-drawer-open')
+  const drawer = itemPanel(page)
   await drawer.getByRole('button', { name: '수정' }).click()
   await expect(drawer.getByRole('textbox', { name: '할일' })).toHaveValue('발표 준비')
 })
@@ -209,7 +214,7 @@ test('계획 화면 시간표 빈 곳을 끌어 일정을 만들고, 끄는 동�
   await page.mouse.move(box.x - 300, box.y + 48 * 3.5, { steps: 4 })
   expect(await page.evaluate(() => window.getSelection()?.toString() ?? '')).toBe('')
   await page.mouse.up()
-  const drawer = page.locator('.ant-drawer-open')
+  const drawer = itemPanel(page)
   await expect(drawer.getByText('새로 만들기')).toBeVisible()
   await expect(drawer.locator('input[value="10:00"]')).toBeVisible()
   await expect(drawer.locator('input[value="11:30"]')).toBeVisible()
@@ -365,7 +370,7 @@ test('계획 화면 우선 업무 아래 프로젝트 칸은 달력과 같다: �
   await expect(card.getByRole('button', { name: '발표 준비 아래에 세부 할일 추가' })).toBeVisible()
 
   await card.getByText('발표 준비').click()
-  const drawer = page.locator('.ant-drawer-open')
+  const drawer = itemPanel(page)
   await expect(drawer.getByRole('button', { name: '수정' })).toBeVisible()
   await drawer.getByRole('button', { name: '삭제' }).click()
   await page.getByRole('button', { name: '지우기' }).click()

@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 
+/** 보기·수정은 오른쪽 창(Drawer), 새로 만들기는 가운데 창(Modal). 지금 열려 있는 쪽 */
+const itemPanel = (page: Page) => page.locator('.ant-drawer-open, .ant-modal').filter({ visible: true })
+
 // 2026-11-14 (토) 오전으로 고정
 const NOW = new Date('2026-11-14T10:00:00')
 
@@ -31,7 +34,7 @@ test('분류를 만들어 할일에 붙이고, 분류를 끄면 숨고, 끌어�
 
   // 빈 날짜 칸을 누르면 그날로 새로 만들기
   await page.locator('[aria-label="2026-11-18"]').click({ position: { x: 60, y: 110 } })
-  const drawer = page.locator('.ant-drawer-open')
+  const drawer = itemPanel(page)
   await expect(drawer.getByText('새로 만들기')).toBeVisible()
   await drawer.getByRole('textbox', { name: '할일' }).fill('교재 주문')
   await drawer.getByLabel('분류').click()
@@ -60,7 +63,7 @@ test('분류를 만들어 할일에 붙이고, 분류를 끄면 숨고, 끌어�
 
 test('한 줄 입력으로 매주 일정을 만들고, 그중 하루만 지운다', async ({ page }) => {
   await page.keyboard.press('n')
-  const drawer = page.locator('.ant-drawer-open')
+  const drawer = itemPanel(page)
   await drawer.getByText('일정', { exact: true }).click()
   await drawer.getByLabel('한 줄 입력').fill('매주 화 7시 학부모 미팅')
   await drawer.getByRole('button', { name: '칸 채우기' }).click()
@@ -71,7 +74,7 @@ test('한 줄 입력으로 매주 일정을 만들고, 그중 하루만 지운�
   await expect(meetings).toHaveCount(3) // 11/17, 11/24, 12/1
 
   await page.locator('[aria-label="2026-11-24"] button[title*="학부모 미팅"]').click()
-  await page.locator('.ant-drawer-open').getByRole('button', { name: '삭제' }).click()
+  await itemPanel(page).getByRole('button', { name: '삭제' }).click()
   await page.getByRole('dialog', { name: '반복 일정이에요' }).getByRole('button', { name: '이 일정만' }).click()
   await expect(meetings).toHaveCount(2)
   await expect(page.locator('[aria-label="2026-11-24"] button[title*="학부모 미팅"]')).toHaveCount(0)
@@ -85,7 +88,7 @@ test('보기를 바꾸면 주소에 남고, 주 보기에서 빈 시간을 끌�
   const col = (await page.locator('[data-drop-col="2026-11-12"]').boundingBox())!
   const hour = col.height / 24
   await dragTo(page, { x: col.x + 30, y: col.y + hour * 10 + 2 }, { x: col.x + 30, y: col.y + hour * 11.5 })
-  const drawer = page.locator('.ant-drawer-open')
+  const drawer = itemPanel(page)
   await expect(drawer.getByText('새로 만들기')).toBeVisible()
   await expect(drawer.locator('input[value="10:00"]')).toBeVisible()
   await expect(drawer.locator('input[value="11:30"]')).toBeVisible()
@@ -100,7 +103,7 @@ test('작은 달력 날짜를 누르면 큰 달력이 그 달로 가고, 시간 
 
   await page.goto('./#/calendar/month/2026-11-14')
   await page.getByRole('button', { name: '추가' }).first().click()
-  const drawer = page.locator('.ant-drawer-open')
+  const drawer = itemPanel(page)
   await drawer.getByText('일정', { exact: true }).click()
   await drawer.getByLabel('제목').fill('여행')
   await drawer.locator('.ant-picker').nth(1).click()

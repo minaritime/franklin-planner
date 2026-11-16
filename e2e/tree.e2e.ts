@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 
+/** 보기·수정은 오른쪽 창(Drawer), 새로 만들기는 가운데 창(Modal). 지금 열려 있는 쪽 */
+const itemPanel = (page: Page) => page.locator('.ant-drawer-open, .ant-modal').filter({ visible: true })
+
 const NOW = new Date('2026-11-14T10:00:00')
 
 test.beforeEach(async ({ page }) => {
@@ -10,7 +13,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('./#/calendar/month/2026-11-14')
 })
 
-const drawer = (page: Page) => page.locator('.ant-drawer-open')
+const drawer = (page: Page) => itemPanel(page)
 const tree = (page: Page) => page.getByLabel('프로젝트 트리')
 
 async function addChild(page: Page, parent: string, title: string): Promise<void> {
