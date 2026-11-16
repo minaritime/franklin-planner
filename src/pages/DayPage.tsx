@@ -11,8 +11,13 @@ import TaskActionModal, { type TaskAction } from '../components/TaskActionModal'
 import TaskForm from '../components/TaskForm'
 import TaskList from '../components/TaskList'
 import { useRemoveTask } from '../components/tree/useRemoveTask'
-import Timeline, { type TimelineBlock } from '../components/Timeline'
-import { bringOverdue } from '../data/actions'
+import Timeline, { type IncomingBlock, type TimelineBlock } from '../components/Timeline'
+import { formatHM } from '../components/timelineGeometry'
+import { useScopeAsk } from '../components/calendar/useScopeAsk'
+import { bringOverdue, moveTask, updateEvent } from '../data/actions'
+import { movedFields } from '../data/eventOps'
+import { toMinutes } from '../data/timeline'
+import { dropSpan } from '../data/timelineDrag'
 import { buildItems } from '../data/calendarItems'
 import { addDays, carriedLongTasks, dDay, overdueTasks, tasksForDay } from '../data/logic'
 import { usePlanner } from '../data/store'
@@ -96,6 +101,8 @@ export default function DayPage({ date }: DayPageProps) {
   const [form, setForm] = useState<FormState>({ open: false })
   const [action, setAction] = useState<TaskAction | null>(null)
   const [drawer, setDrawer] = useState<DrawerState | null>(null)
+  const [incoming, setIncoming] = useState<IncomingBlock | null>(null)
+  const [askScope, scopeDialog] = useScopeAsk()
   const { token } = theme.useToken()
 
   const dayTasks = useMemo(() => tasksForDay(data.tasks, date), [data.tasks, date])
@@ -116,6 +123,8 @@ export default function DayPage({ date }: DayPageProps) {
         end: i.end!,
         title: i.title,
         lineColor: chipColors(token, categoryColor(data.categories, i.categoryId)).line,
+        // 여러 날 일정은 하루 일정표에서 시간을 바꾸면 헷갈린다. 달력에서 바꾼다
+        locked: i.endDate > i.date,
       }))
     const taskBlocks = dayTasks
       .filter((t) => t.startTime && t.endTime && t.status !== 'forwarded' && t.status !== 'cancelled')
@@ -140,6 +149,29 @@ export default function DayPage({ date }: DayPageProps) {
     const item = eventItems.find((i) => i.key === block.id)
     if (item) setDrawer({ mode: 'view', item })
   }
+  /** 목록에서 끌어 온 할일이 놓일 시간. 이미 시간이 있으면 그 길이를 지킨다 */
+  const taskDropSpan = (task: Task, minutes: number) =>
+    dropSpan(minutes, task.startTime && task.endTime ? toMinutes(task.endTime) - toMinutes(task.startTime) : undefined)
+
+  const hoverTask = (task: Task, minutes: number | null): void =>
+    setIncoming(minutes === null ? null : { ...taskDropSpan(task, minutes), title: task.title })
+
+  const dropTask = (task: Task, minutes: number): void => {
+    const span = taskDropSpan(task, minutes)
+    moveTask(task.id, 0, { start: formatHM(span.start), end: formatHM(span.end) })
+  }
+
+  const changeBlock = async (block: TimelineBlock, start: string, end: string): Promise<void> => {
+    if (block.kind === 'task') {
+      moveTask(block.id, 0, { start, end })
+      return
+    }
+    const item = eventItems.find((i) => i.key === block.id)
+    if (!item?.event) return
+    const scope = item.recurring ? await askScope('change') : 'all'
+    if (scope) updateEvent(item.event.id, item.occDate, movedFields(item.event, item.occDate, { start, end }), scope)
+  }
+
   const allDayEvents = eventItems.filter((i) => i.allDay)
   const note = data.notes.find((n) => n.date === date)?.text ?? ''
   const listed = [...dayTasks, ...carried]
@@ -171,6 +203,8 @@ export default function DayPage({ date }: DayPageProps) {
               onAction={setAction}
               onRemove={(task) => void removeWithAsk(task.id)}
               allTasks={data.tasks}
+              onTimelineHover={hoverTask}
+              onTimelineDrop={dropTask}
             />
             {removeDialog}
           </Card>
@@ -193,7 +227,10 @@ export default function DayPage({ date }: DayPageProps) {
                 blocks={blocks}
                 onOpenBlock={openBlock}
                 onCreate={(start, end) => setDrawer(newEvent(date, start, end))}
+                onChangeBlock={(block, start, end) => void changeBlock(block, start, end)}
+                incoming={incoming}
               />
+              {scopeDialog}
             </Card>
             <Card title="메모">
               <DayMemo key={date} date={date} initial={note} />

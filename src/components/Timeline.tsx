@@ -1,9 +1,11 @@
 import { theme, Typography } from 'antd'
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { lockTextSelect } from './calendar/selectLock'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { hourRange, layoutEvents, toMinutes } from '../data/timeline'
+import { LAST_MINUTE, type Span } from '../data/timelineDrag'
 import type { Priority } from '../data/types'
 import { PRIORITY_COLOR_TOKEN } from '../theme'
+import { formatHM, HOUR_HEIGHT, minutesIn } from './timelineGeometry'
+import { spanOf, useTimelineDrag } from './useTimelineDrag'
 
 /** 시간표 한 칸: 일정이거나, 시간이 붙은 할일 */
 export interface TimelineBlock {
@@ -16,6 +18,13 @@ export interface TimelineBlock {
   readonly finished?: boolean
   /** 일정의 분류 색 */
   readonly lineColor?: string
+  /** 끌어서 옮기거나 길이를 바꾸지 못하는 칸 (여러 날 일정) */
+  readonly locked?: boolean
+}
+
+/** 목록에서 끌고 들어오는 할일이 놓일 자리 */
+export interface IncomingBlock extends Span {
+  readonly title: string
 }
 
 interface TimelineProps {
@@ -24,83 +33,16 @@ interface TimelineProps {
   readonly onOpenBlock: (block: TimelineBlock) => void
   /** 빈 곳을 누르거나 끌어서 고른 시간 (HH:MM) */
   readonly onCreate: (start: string, end: string) => void
+  /** 칸을 옮기거나 위·아래 끝을 끌어 바꾼 시간 (HH:MM) */
+  readonly onChangeBlock: (block: TimelineBlock, start: string, end: string) => void
+  readonly incoming?: IncomingBlock | null
 }
 
-const HOUR_HEIGHT = 48
 const LABEL_WIDTH = 40
-const SNAP = 15
-const DEFAULT_LENGTH = 60
-const LAST_MINUTE = 24 * 60 - 1
+const MIN_HEIGHT = 20
+const EDGE = 6
 
-export const formatHM = (m: number): string => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
-
-/** 누른 곳과 지금 곳으로 만든 시간. 그냥 누르면 1시간 */
-export function createSpan(a: number, b: number): { start: number; end: number } {
-  if (a === b) return { start: a, end: Math.min(a + DEFAULT_LENGTH, LAST_MINUTE) }
-  return { start: Math.min(a, b), end: Math.min(Math.max(a, b), LAST_MINUTE) }
-}
-
-interface CreateDrag {
-  readonly anchor: number
-  readonly current: number
-}
-
-/** 시간표 빈 곳을 끌어서 시간 고르기 (달력 주·일 보기와 같은 방식) */
-function useCreateDrag(minutesAt: (clientY: number) => number, onCreate: (start: string, end: string) => void) {
-  const [drag, setDrag] = useState<CreateDrag | null>(null)
-  const ref = useRef<CreateDrag | null>(null)
-  const latest = useRef({ minutesAt, onCreate })
-  useEffect(() => {
-    latest.current = { minutesAt, onCreate }
-  })
-
-  useEffect(() => {
-    const set = (next: CreateDrag | null): void => {
-      ref.current = next
-      setDrag(next)
-    }
-    const move = (e: PointerEvent): void => {
-      if (ref.current) set({ ...ref.current, current: latest.current.minutesAt(e.clientY) })
-    }
-    const up = (): void => {
-      const d = ref.current
-      if (!d) return
-      set(null)
-      lockTextSelect(false)
-      const span = createSpan(d.anchor, d.current)
-      latest.current.onCreate(formatHM(span.start), formatHM(span.end))
-    }
-    const abort = (): void => {
-      if (!ref.current) return
-      set(null)
-      lockTextSelect(false)
-    }
-    const key = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') abort()
-    }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
-    window.addEventListener('pointercancel', abort)
-    window.addEventListener('keydown', key)
-    return () => {
-      lockTextSelect(false)
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
-      window.removeEventListener('pointercancel', abort)
-      window.removeEventListener('keydown', key)
-    }
-  }, [])
-
-  const begin = (e: ReactPointerEvent): void => {
-    if (e.button !== 0) return
-    if (e.pointerType === 'mouse') e.preventDefault()
-    lockTextSelect(true)
-    const m = latest.current.minutesAt(e.clientY)
-    ref.current = { anchor: m, current: m }
-    setDrag(ref.current)
-  }
-  return { drag, begin }
-}
+const keyOf = (block: TimelineBlock): string => `${block.kind}-${block.id}`
 
 function useNowMinutes(enabled: boolean): number {
   const [now, setNow] = useState(() => new Date())
@@ -112,23 +54,58 @@ function useNowMinutes(enabled: boolean): number {
   return now.getHours() * 60 + now.getMinutes()
 }
 
-export default function Timeline({ isToday, blocks, onOpenBlock, onCreate }: TimelineProps) {
+function Ghost({ span, label, top }: { span: Span; label: string; top: (m: number) => number }) {
   const { token } = theme.useToken()
-  const range = hourRange(blocks)
+  return (
+    <div
+      aria-hidden
+      data-timeline-ghost
+      className="num"
+      style={{
+        position: 'absolute',
+        top: top(span.start) + 1,
+        height: Math.max(MIN_HEIGHT, top(span.end) - top(span.start) - 2),
+        left: LABEL_WIDTH,
+        right: 2,
+        borderRadius: token.borderRadiusSM,
+        border: `2px dashed ${token.colorPrimary}`,
+        background: token.colorPrimaryBg,
+        color: token.colorPrimary,
+        fontSize: 12,
+        padding: '1px 8px',
+        pointerEvents: 'none',
+        zIndex: 3,
+        overflow: 'hidden',
+        whiteSpace: 'nowrap',
+        textOverflow: 'ellipsis',
+      }}
+    >
+      {formatHM(span.start)}–{formatHM(span.end)} {label}
+    </div>
+  )
+}
+
+export default function Timeline({ isToday, blocks, onOpenBlock, onCreate, onChangeBlock, incoming }: TimelineProps) {
+  const { token } = theme.useToken()
+  const range = hourRange(incoming ? [...blocks, { start: formatHM(incoming.start), end: formatHM(incoming.end) }] : blocks)
   const hours = Array.from({ length: range.end - range.start }, (_, i) => range.start + i)
   const nowMinutes = useNowMinutes(isToday)
   const top = (minutes: number): number => ((minutes - range.start * 60) / 60) * HOUR_HEIGHT
+  const limits = { min: range.start * 60, max: Math.min(range.end * 60, LAST_MINUTE) }
 
   const gridRef = useRef<HTMLDivElement>(null)
-  const minutesAt = (clientY: number): number => {
-    const rect = gridRef.current?.getBoundingClientRect()
-    const y = rect ? clientY - rect.top : 0
-    const raw = range.start * 60 + (y / HOUR_HEIGHT) * 60
-    const snapped = Math.round(raw / SNAP) * SNAP
-    return Math.max(range.start * 60, Math.min(range.end * 60 - SNAP, snapped))
-  }
-  const create = useCreateDrag(minutesAt, onCreate)
-  const ghost = create.drag ? createSpan(create.drag.anchor, create.drag.current) : null
+  const minutesAt = (clientY: number): number => minutesIn(clientY - (gridRef.current?.getBoundingClientRect().top ?? 0), range.start, range.end)
+  const drag = useTimelineDrag({
+    minutesAt,
+    limits,
+    onCreate: (span) => onCreate(formatHM(span.start), formatHM(span.end)),
+    onChange: (key, span) => {
+      const block = blocks.find((b) => keyOf(b) === key)
+      if (block) onChangeBlock(block, formatHM(span.start), formatHM(span.end))
+    },
+  })
+  const active = drag.drag?.started ? drag.drag : null
+  const activeBlock = active?.blockKey ? blocks.find((b) => keyOf(b) === active.blockKey) : undefined
 
   /** 일정은 파란 바탕, 할일은 우선순위 색 테두리의 흰 바탕으로 구분한다 */
   const blockStyle = (block: TimelineBlock): CSSProperties => {
@@ -162,81 +139,89 @@ export default function Timeline({ isToday, blocks, onOpenBlock, onCreate }: Tim
         ref={gridRef}
         role="button"
         aria-label="시간표 빈 곳"
-        onPointerDown={create.begin}
+        data-timeline-grid
+        data-range-start={range.start}
+        data-range-end={range.end}
+        onPointerDown={(e) => drag.begin(e, 'create')}
         style={{ position: 'absolute', inset: `0 0 0 ${LABEL_WIDTH}px`, cursor: 'copy', touchAction: 'none' }}
       />
 
-      {ghost && (
-        <div
-          aria-hidden
-          className="num"
-          style={{
-            position: 'absolute',
-            top: top(ghost.start) + 1,
-            height: Math.max(20, top(ghost.end) - top(ghost.start) - 2),
-            left: LABEL_WIDTH,
-            right: 2,
-            borderRadius: token.borderRadiusSM,
-            border: `2px dashed ${token.colorPrimary}`,
-            background: token.colorPrimaryBg,
-            color: token.colorPrimary,
-            fontSize: 12,
-            padding: '1px 8px',
-            pointerEvents: 'none',
-            zIndex: 2,
-          }}
-        >
-          {formatHM(ghost.start)}–{formatHM(ghost.end)}
-        </div>
-      )}
+      {active && <Ghost span={spanOf(active, limits)} label={activeBlock?.title ?? ''} top={top} />}
+      {incoming && <Ghost span={incoming} label={incoming.title} top={top} />}
 
       {layoutEvents(blocks).map(({ event: block, column, columns }) => {
         const start = toMinutes(block.start)
         const end = toMinutes(block.end)
-        const height = Math.max(20, top(end) - top(start) - 2)
+        const height = Math.max(MIN_HEIGHT, top(end) - top(start) - 2)
+        const key = keyOf(block)
+        const grab = { key, start, end }
+        const edge = (side: 'start' | 'end') => (
+          <span
+            role="separator"
+            aria-label={side === 'start' ? `${block.title} 시작 시간 바꾸기` : `${block.title} 끝 시간 바꾸기`}
+            onPointerDown={(e) => drag.begin(e, side === 'start' ? 'resize-start' : 'resize-end', grab)}
+            style={{ position: 'absolute', left: 0, right: 0, [side === 'start' ? 'top' : 'bottom']: 0, height: EDGE, cursor: 'ns-resize', touchAction: 'none', zIndex: 1 }}
+          />
+        )
         return (
-          <button
-            key={`${block.kind}-${block.id}`}
-            type="button"
-            onClick={() => onOpenBlock(block)}
+          <div
+            key={key}
+            data-timeline-block={key}
             style={{
               position: 'absolute',
               top: top(start) + 1,
               height,
               left: `calc(${LABEL_WIDTH}px + (100% - ${LABEL_WIDTH}px) * ${column / columns})`,
               width: `calc((100% - ${LABEL_WIDTH}px) / ${columns} - 2px)`,
-              padding: '2px 8px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'flex-start',
-              border: 0,
-              borderRadius: token.borderRadiusSM,
-              color: block.finished ? token.colorTextTertiary : token.colorText,
-              textAlign: 'left',
-              overflow: 'hidden',
-              cursor: 'pointer',
-              fontSize: 12,
-              lineHeight: '18px',
-              ...blockStyle(block),
+              opacity: active?.blockKey === key ? 0.35 : 1,
             }}
           >
-            <div
+            <button
+              type="button"
+              aria-label={`${block.title} ${block.start}~${block.end}`}
+              onPointerDown={block.locked ? undefined : (e) => drag.begin(e, 'move', grab)}
+              onClick={() => {
+                if (!drag.consumeClick()) onOpenBlock(block)
+              }}
               style={{
-                fontWeight: 500,
-                whiteSpace: 'nowrap',
+                width: '100%',
+                height: '100%',
+                padding: '2px 8px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                border: 0,
+                borderRadius: token.borderRadiusSM,
+                color: block.finished ? token.colorTextTertiary : token.colorText,
+                textAlign: 'left',
                 overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                textDecoration: block.finished ? 'line-through' : undefined,
+                cursor: block.locked ? 'pointer' : 'grab',
+                touchAction: block.locked ? undefined : 'none',
+                fontSize: 12,
+                lineHeight: '18px',
+                ...blockStyle(block),
               }}
             >
-              {block.title}
-            </div>
-            {height >= 40 && (
-              <div className="num" style={{ color: token.colorTextSecondary }}>
-                {block.start}~{block.end}
+              <div
+                style={{
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  textDecoration: block.finished ? 'line-through' : undefined,
+                }}
+              >
+                {block.title}
               </div>
-            )}
-          </button>
+              {height >= 40 && (
+                <div className="num" style={{ color: token.colorTextSecondary }}>
+                  {block.start}~{block.end}
+                </div>
+              )}
+            </button>
+            {!block.locked && edge('start')}
+            {!block.locked && edge('end')}
+          </div>
         )
       })}
 

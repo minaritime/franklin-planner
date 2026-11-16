@@ -225,3 +225,47 @@ test('달력에서 고른 보기는 다른 화면에 갔다 와도 그대로다'
   await page.reload()
   await expect(page.getByRole('button', { name: /하루 보기$/ })).toHaveCount(7)
 })
+
+test('할일을 끌어 일정표에 놓고, 위·아래 끝과 몸통을 끌어 시간을 바꾼다', async ({ page }) => {
+  await page.getByRole('textbox', { name: '새 할일' }).fill('보고서 쓰기')
+  await page.getByRole('textbox', { name: '새 할일' }).press('Enter')
+
+  const grid = page.getByRole('button', { name: '시간표 빈 곳' })
+  const box = (await grid.boundingBox())!
+  const yAt = (hour: number): number => box.y + (hour - 8) * 48
+  const handle = (await page.getByLabel(/순서 바꾸기/).boundingBox())!
+
+  // 목록 손잡이를 잡아 10시 자리에 놓는다 (시간 없던 할일은 1시간)
+  await page.mouse.move(handle.x + 4, handle.y + 4)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 80, yAt(10) + 2, { steps: 12 })
+  await expect(page.locator('[data-timeline-ghost]')).toContainText('10:00–11:00')
+  await page.mouse.up()
+  await expect(page.getByRole('button', { name: '보고서 쓰기 10:00~11:00' })).toBeVisible()
+  await expect(page.locator('[data-timeline-ghost]')).toHaveCount(0)
+
+  const drag = async (label: string, fromY: number, toY: number): Promise<void> => {
+    const el = (await page.getByLabel(label).boundingBox())!
+    await page.mouse.move(el.x + el.width / 2, fromY)
+    await page.mouse.down()
+    await page.mouse.move(el.x + el.width / 2, toY, { steps: 6 })
+    await page.mouse.up()
+  }
+
+  // 아래 끝을 12시까지
+  await drag('보고서 쓰기 끝 시간 바꾸기', yAt(11) - 2, yAt(12))
+  await expect(page.getByRole('button', { name: '보고서 쓰기 10:00~12:00' })).toBeVisible()
+  // 위 끝을 9시까지
+  await drag('보고서 쓰기 시작 시간 바꾸기', yAt(10) + 3, yAt(9))
+  await expect(page.getByRole('button', { name: '보고서 쓰기 09:00~12:00' })).toBeVisible()
+  // 몸통을 30분 아래로 옮겨도 길이는 그대로, 끈 뒤에는 수정 창이 안 열린다
+  await drag('보고서 쓰기 09:00~12:00', yAt(10), yAt(10.5))
+  await expect(page.getByRole('button', { name: '보고서 쓰기 09:30~12:30' })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  // 목록에도 시간이 붙는다
+  await expect(page.getByText('09:30', { exact: true })).toBeVisible()
+
+  // 그냥 누르면 수정 창
+  await page.getByRole('button', { name: '보고서 쓰기 09:30~12:30' }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+})

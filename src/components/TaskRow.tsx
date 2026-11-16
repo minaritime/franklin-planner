@@ -81,7 +81,8 @@ export default function TaskRow({ task, goal, day, onEdit, onAction, onRemove, p
         transform: CSS.Transform.toString(sortable.transform),
         transition: sortable.transition,
         position: 'relative',
-        zIndex: sortable.isDragging ? 1 : undefined,
+        // 끄는 동안 손 밑에는 작은 표가 따라가고, 원래 줄은 흐리게 자리만 지킨다
+        opacity: sortable.isDragging ? 0.4 : undefined,
       }}
     >
       {carried ? (
@@ -93,7 +94,7 @@ export default function TaskRow({ task, goal, day, onEdit, onAction, onRemove, p
           {...sortable.attributes}
           {...sortable.listeners}
           style={{ color: token.colorTextQuaternary, cursor: 'grab', lineHeight: '22px', touchAction: 'none' }}
-          aria-label="순서 바꾸기"
+          aria-label="순서 바꾸기·일정표로 끌기"
         >
           <HolderOutlined />
         </span>
